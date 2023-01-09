@@ -1,12 +1,21 @@
-// Course     : Parallel Programming Practical
-// Course Code: X_400162
-// Professor  : Dr. H.E. Bal
-// Due        : 2023-02-03
-// Author     : Jared G. Frazier, 2795544
-// Description: Parallel n-body simulation
-// Example Cmd: 
-// $ # Requires `module load openmpi/gcc`
-// $ prun -np 2 -script $PRUN_ETC/prun-openmpi ./nbody/nbody-par 
+/* 
+Course     : Parallel Programming Practical
+Course Code: X_400162
+Professor  : Dr. H.E. Bal
+Due        : 2023-02-03
+Author     : Jared G. Frazier, 2795544
+Description: Parallel n-body simulation
+Example Cmd: 
+$ # Requires `module load openmpi/gcc`
+$ prun -np 2 -script $PRUN_ETC/prun-openmpi ./nbody/nbody-par 
+Notes:
+* What data needs to be scattered?
+    - What MPI datatypes might be used here?
+* What are the data dependencies of different functions?
+    - Could latency hiding (non-blocking calls) be used?
+    - Do ghost cells need to be used?
+    - How can I debug outputs?
+*/ 
   
 #include <stdio.h>
 #include <stdlib.h>
