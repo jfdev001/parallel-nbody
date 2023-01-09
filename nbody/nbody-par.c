@@ -11,6 +11,7 @@ $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi ./nbody-par
 Notes:
 * What data needs to be scattered?
     - What MPI datatypes might be used here?
+    - Think about the actual parallelization of this ...
 * What are the data dependencies of different functions?
     - Could latency hiding (non-blocking calls) be used?
     - Do ghost cells need to be used?
@@ -62,8 +63,10 @@ struct world {
 */
 
 /// @brief Build the MPI datatype for `struct bodyType`
-/// (Pacheco 1997, p. 93)
-/// Where do the args come from?? verify this
+/// @details 
+/// Pacheco 1997, p. 93
+/// https://rookiehpc.github.io/mpi/docs/mpi_type_create_struct/index.html
+/// https://www.msi.umn.edu/workshops/mpi/hands-on/derived-datatypes/struct/assign
 static void 
 build_mpi_body_type(
     double x[2],        
@@ -119,12 +122,26 @@ build_mpi_body_type(
         MPI_Address(radius, &address);
         displacements[7] = address - start_address;
 
+        // Build derived datatype
+        MPI_Type_struct(
+            n_members, 
+            member_lengths,
+            displacements,
+            typearr,
+            MPI_Body_type);
+
         // Register the datatype
         MPI_Type_commit(MPI_Body_type);
 }
 
+/// @brief Build the MPI datatype for `struct world`
 static void 
 build_mpi_world_type(
+    struct bodyType bodies[MAXBODIES],
+    int *bodyCt,
+    int *old,
+    int *xdim,
+    int *ydim,
     MPI_Datatype *MPI_World_type) 
 {
 
