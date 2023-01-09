@@ -4,6 +4,9 @@
 // Due        : 2023-02-03
 // Author     : Jared G. Frazier, 2795544
 // Description: Parallel n-body simulation
+// Example Cmd: 
+// $ # Requires `module load openmpi/gcc`
+// $ prun -np 2 -script $PRUN_ETC/prun-openmpi ./nbody/nbody-par 
   
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +34,6 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     
-
     // Print hello
     printf("Hello from %d/%d\n", rank, size);
 
