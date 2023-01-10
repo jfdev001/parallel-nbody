@@ -403,13 +403,16 @@ main(int argc, char **argv)
                 argv[0]);
         exit(1);
     }
+
     if ((world->bodyCt = atol(argv[1])) > MAXBODIES ) {
         fprintf(stderr, "Using only %d bodies...\n", MAXBODIES);
         world->bodyCt = MAXBODIES;
+
     } else if (world->bodyCt < 2) {
         fprintf(stderr, "Using two bodies...\n");
         world->bodyCt = 2;
     }
+    
     secsup = atoi(argv[2]);
     if (map_P6(argv[3], &world->xdim, &world->ydim, &image_map) == -1) {
         fprintf(stderr, "Cannot read %s: %s\n", argv[3], strerror(errno));
