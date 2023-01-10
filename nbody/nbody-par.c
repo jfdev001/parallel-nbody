@@ -8,6 +8,7 @@ Description: Parallel n-body simulation
 Example Cmd:
 $ # Requires `module load openmpi/gcc`
 $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi ./nbody-par
+
 Notes:
 * What data needs to be scattered?
     - What MPI datatypes might be used here?
@@ -16,6 +17,48 @@ Notes:
     - Could latency hiding (non-blocking calls) be used?
     - Do ghost cells need to be used?
     - How can I debug outputs?
+
+
+For the purpose of handling start/end indices consider offsets of ghost cells
+for example
+if P_0 gets bodies 1-3  &local_bodies[0] <-- 0 1 2
+if P_1 gets bodies 4-6  &local_bodies[3] <-- x x x 3 4 5 x x x
+if P_2 gets bodies 7-9  &local_bodies[6] <-- x x x x x x 6 7 8
+therefore, there is an offset for accessing the local bodies and interproc
+comm can simply be to the appropriate cells 
+
+The indices for b and c start and stop for the computable portions of the 
+the bodies (i.e., what the process actually has access to) is 
+b in range(rank*n/p, (rank+1)*n/p)
+c in range(rank*n/p + 1, (rank+1)*n/p) <--- could do lazy if rank == last, n/p+n%p
+offset = rank*n/p
+
+If i split up the data... then i end up requiring communication between
+all processes because all processes must update forces
+based on other bodies 
+
+Repeat calculations should be fine. Consider the following situation:
+P = 2, N = 6
+P_0 = [0, 1, 2, x, x, x]
+P_1 = [x, x, x, 3, 4, 5]
+compute_forces(P_1, P_0) --> 3 -> 0, 1, 2; 4 -> 0, 1, 2; 5 -> 0, 1, 2
+compute_forces(P_0, P_1) --> 0 -> 3, 4, 5; 1 -> 3, 4, 5; 2 -> 3, 4, 5
+These overlap
+P_1: (3, 0); (3, 1); (3, 2); (4, 0)
+P_0: (0, 3);                 (0, 4) ... etc.
+The alternative would be increasing the communication overhead and 
+load balancing computations 
+
+For the P = 2, N = 6 case, the following communication would occur:
+```
+data = scatter(world.bodies)
+P0: send(&data[rank*n/p],    n/p, P1)  # 
+P1: recv(&data[(rank-1)*n/p, n/p, P0]) # [x->0, x->1, x->2, 3, 4, 5]
+```
+
+How independent can these updates be? Consider the following:
+P0: b = 0, 1... 
+P1: b = 2, 3
 
 Pseudocode:
 
@@ -28,6 +71,7 @@ struct bodyType local_bodies[MAX] = scatterv(world.bodies)
 struct world *local_world = calloc(1, sizeof(*local_world)) // why is this malloced?
 
 local_world.bodies = local_bodies 
+
 */
 
 #include <stdio.h>
@@ -190,7 +234,8 @@ compute_forces(struct world *world)
     int b, c;
 
     /* Incrementally accumulate forces from each body pair,
-       skipping force of body on itself (c == b)
+       skipping force of body on itself (c == b)....
+       if you use the t+1 update then you are using the wrong forces
     */
     for (b = 0; b < world->bodyCt; ++b) {
         for (c = b + 1; c < world->bodyCt; ++c) {
@@ -264,8 +309,6 @@ compute_positions(struct world *world)
         YN(world, b) = yn;
     }
 }
-
-
 
 void preprocess()
 {
