@@ -34,7 +34,7 @@ struct bodyType {
     double radius;      /* width (derived from mass) */
 };
 
-
+/// @brief The number of bodies will be determined by scattering at runtime
 struct world {
     struct bodyType bodies[MAXBODIES];
     int                 bodyCt;
@@ -58,6 +58,8 @@ struct world {
 #define R(w, B)        (w)->bodies[B].radius
 #define M(w, B)        (w)->bodies[B].mass
 
+/// @brief Sets forces of bodies to 0
+/// @details No data dependencies. Loop assignment is atomic.
 static void
 clear_forces(struct world *world)
 {
@@ -69,6 +71,7 @@ clear_forces(struct world *world)
     }
 }
 
+/// @brief Compute the forces of bodies on one another.
 static void
 compute_forces(struct world *world)
 {
@@ -101,6 +104,9 @@ compute_forces(struct world *world)
     }
 }
 
+/// @brief Compute velocities of bodies
+/// @details There are no body dependencies here, so a simple data 
+/// parallel strategy here should be sufficient.
 static void
 compute_velocities(struct world *world)
 {
@@ -119,6 +125,9 @@ compute_velocities(struct world *world)
     }
 }
 
+/// @brief Compute positions of bodies.
+/// @details There are no body dependencies here, so a simple data 
+/// parallel strategy here should be sufficient.
 static void
 compute_positions(struct world *world)
 {
@@ -132,6 +141,7 @@ compute_positions(struct world *world)
         if (xn < 0) {
             xn = 0;
             XV(world, b) = -XV(world, b);
+
         } else if (xn >= world->xdim) {
             xn = world->xdim - 1;
             XV(world, b) = -XV(world, b);

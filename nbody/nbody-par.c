@@ -16,6 +16,18 @@ Notes:
     - Could latency hiding (non-blocking calls) be used?
     - Do ghost cells need to be used?
     - How can I debug outputs?
+
+Pseudocode:
+
+struct bodyType bodies[MAX]; // big allocation on stack for all procs
+
+if root 
+    initialize(world)
+
+struct bodyType local_bodies[MAX] = scatterv(world.bodies)
+struct world *local_world = calloc(1, sizeof(*local_world)) // why is this malloced?
+
+local_world.bodies = local_bodies 
 */
 
 #include <stdio.h>
