@@ -12,7 +12,7 @@ of bound? Can i round to ease the potential for floating point.
 
 $ # While in proto/
 $ gcc -o test_2_compute_F test_2_compute_F.c -lm -g
-$ ./test_2_compute_F SUM # wrong output
+$ ./test_2_compute_F     # wrong output
 $ ./test_2_compute_F SUM # right output
 */
 

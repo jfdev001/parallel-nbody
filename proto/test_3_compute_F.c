@@ -1,14 +1,10 @@
 /*
-Create three arrays:
-(1) Forces computed as normal with the sequential version
-(2) Forces computed as if this array was for P0
-(3) Forces computed as if this array was for P1
+Performs the compute forces update in serial to check a potential parallel implementation
 
-Then combine the results of (2) and (3) into a single array
-and see if they match the sequentially computed result.
-
-NOTE: Will i need a function that approximates within some sort
-of bound? Can i round to ease the potential for floating point.
+$ # While in proto/
+$ gcc -o test_3_compute_F test_3_compute_F.c -lm -g
+$ ./test_3_compute_F     # wrong output
+$ ./test_3_compute_F SUM # right output
 */
 
 
@@ -69,62 +65,93 @@ void compute_forces(struct world *world);
 void initialize_data(struct world *world);
 void print_xf(struct world *world, int b, int bodyCt);
 
-int main() {
+int main(int argc, char **argv) {
 
     int bodyCt, xdim, ydim;
-    bodyCt = 8;
+    bodyCt = 9;
     xdim = 10;
     ydim = 10;
 
     struct world *main_world = calloc(1, sizeof(*main_world));
+
     struct world *p0_world = calloc(1, sizeof(*p0_world));
     struct world *p1_world = calloc(1, sizeof(*p1_world));
+    struct world *p2_world = calloc(1, sizeof(*p2_world));
+    struct world *p_sum = calloc(1, sizeof(*p_sum));
 
-    if (main_world == NULL || p0_world == NULL || p1_world == NULL) 
+    if (main_world == NULL || p0_world == NULL || p1_world == NULL || p2_world == NULL) 
     { 
         printf("not enough mem\n"); exit(1); 
     }
 
+    // Initialize data
     main_world->bodyCt = bodyCt;
     main_world->xdim = xdim;
     main_world->ydim = ydim;
+    initialize_data(main_world);
 
     p0_world->bodyCt = bodyCt;
     p0_world->xdim = xdim;
     p0_world->ydim = ydim;
+    initialize_data(p0_world);
 
     p1_world->bodyCt = bodyCt;
     p1_world->xdim = xdim;
     p1_world->ydim = ydim;
-
-    initialize_data(main_world);
-    initialize_data(p0_world);
     initialize_data(p1_world);
 
+    p2_world->bodyCt = bodyCt;
+    p2_world->xdim = xdim;
+    p2_world->ydim = ydim;
+    initialize_data(p2_world);
+
+    // compute forces for main and print
     compute_forces(main_world);
 
     printf("Main World:\n");
     print_xf(main_world, 0, bodyCt);
     printf("\n");
 
+    /* Compute partition forces
+    */
+
     // Compute partition 0 forces
-    for (int b = 0; b < bodyCt/2; b++) { // b in [0..4)
+    for (int b = 0; b < bodyCt/3; b++) { 
         for (int c = b+1; c < bodyCt; c++){ 
             update_forces(p0_world, b, c);
         }
     }
 
     // compute partition 1 forces
-    for (int b = bodyCt/2; b < bodyCt; b++){ // b in [4, 8)
-        for (int c = b+1; c < bodyCt; c++) { // misses previous C's... how to compensate?
+    for (int b = bodyCt/3; b < 2*bodyCt/3; b++){ 
+        for (int c = b+1; c < bodyCt; c++) { 
             update_forces(p1_world, b, c);
         }
     }
 
-    // add the latter half forces of the i-1 partition to the i partition
-    for (int b = bodyCt/2; b < bodyCt; b++){ // b in [4, 8)
-        XF(p1_world, b) += XF(p0_world, b);
+    // compute partition 2 forces
+    for (int b = 2*bodyCt/3; b < 3*bodyCt/3; b++){ 
+        for (int c = b+1; c < bodyCt; c++) {
+            update_forces(p2_world, b, c);
+        }
     }
+
+    // Optional sum operation
+    if (argc > 1 && strcmp(argv[1], "SUM") == 0)
+    {
+        for (int b = 0; b < bodyCt; b++)
+        {
+            XF(p_sum, b) = XF(p0_world, b) + XF(p1_world, b) + XF(p2_world, b);
+        }
+    }
+    else 
+    {
+        for (int b = 0; b < bodyCt; b++)
+        {
+            XF(p_sum, b) = -1000;
+        }
+    }
+    
 
     printf("p0_world:\n");
     print_xf(p0_world, 0, bodyCt);
@@ -132,6 +159,14 @@ int main() {
     
     printf("p1_world:\n");
     print_xf(p1_world, 0, bodyCt);
+    printf("\n");
+
+    printf("p2_world:\n");
+    print_xf(p2_world, 0, bodyCt);
+    printf("\n");
+
+    printf("p_sum:\n");
+    print_xf(p_sum, 0, bodyCt);
     printf("\n");
 
     return 0;
