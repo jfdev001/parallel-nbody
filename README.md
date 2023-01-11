@@ -12,3 +12,4 @@ Content:
 References
 
 * [Youtube: MPI Derived Types](https://www.youtube.com/watch?v=x_GZtMCr4W4)
+* [How to Debug using GDB](https://u.osu.edu/cstutorials/2018/09/28/how-to-debug-c-program-using-gdb-in-6-simple-steps/)
