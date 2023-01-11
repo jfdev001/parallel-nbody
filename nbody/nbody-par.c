@@ -122,8 +122,8 @@ struct world {
 /// @brief Build the MPI datatype for `struct bodyType`
 /// @details 
 /// Pacheco 1997, p. 93
-/// https://rookiehpc.github.io/mpi/docs/mpi_type_create_struct/index.html
-/// https://www.msi.umn.edu/workshops/mpi/hands-on/derived-datatypes/struct/assign
+/// [Example Code](https://rookiehpc.github.io/mpi/docs/mpi_type_create_struct/index.html)
+/// [Stack Overflow: Sending Array of Structs](https://stackoverflow.com/questions/66622459/sending-array-of-structs-in-mpi)
 static void 
 build_mpi_body_type(
     double x[2],        
@@ -136,59 +136,61 @@ build_mpi_body_type(
     double *radius,
     MPI_Datatype *MPI_Body_type) 
 {
-        // Number of members in struct
-        const int n_members = 8;
+    // Number of members in struct
+    const int n_members = 8;
 
-        // Number of elements in each member
-        int member_lengths[n_members];
-        member_lengths[0] = 2;
-        member_lengths[1] = 2;
-        for (int member = 2; member < n_members; member++)
-            member_lengths[member] = 1;
+    // Number of elements in each member
+    int member_lengths[n_members];
+    member_lengths[0] = 2;
+    member_lengths[1] = 2;
+    for (int member = 2; member < n_members; member++)
+        member_lengths[member] = 1;
 
-        // Types of members
-        MPI_Datatype typearr[n_members];
-        for (int member = 0; member < n_members; member++)
-            typearr[member] = MPI_DOUBLE;
+    // Types of members
+    MPI_Datatype typearr[n_members];
+    for (int member = 0; member < n_members; member++)
+        typearr[member] = MPI_DOUBLE;
 
-        // Displacements of members in memory
-        MPI_Aint displacements[n_members];
-        MPI_Aint start_address, address;
+    // Displacements of members in memory
+    MPI_Aint displacements[n_members];
+    MPI_Aint start_address, address;
 
-        displacements[0] = 0; // first member is at displacement 0
-        MPI_Address(x, &start_address);
+    displacements[0] = 0; // first member is at displacement 0
+    MPI_Address(x, &start_address);
 
-        MPI_Address(y, &address);
-        displacements[1] = address - start_address;
+    MPI_Address(y, &address);
+    displacements[1] = address - start_address;
 
-        MPI_Address(xf, &address);
-        displacements[2] = address - start_address;
+    MPI_Address(xf, &address);
+    displacements[2] = address - start_address;
 
-        MPI_Address(yf, &address);
-        displacements[3] = address - start_address;
+    MPI_Address(yf, &address);
+    displacements[3] = address - start_address;
 
-        MPI_Address(xv, &address);
-        displacements[4] = address - start_address;
+    MPI_Address(xv, &address);
+    displacements[4] = address - start_address;
 
-        MPI_Address(yv, &address);
-        displacements[5] = address - start_address;
+    MPI_Address(yv, &address);
+    displacements[5] = address - start_address;
 
-        MPI_Address(mass, &address);
-        displacements[6] = address - start_address;
+    MPI_Address(mass, &address);
+    displacements[6] = address - start_address;
 
-        MPI_Address(radius, &address);
-        displacements[7] = address - start_address;
+    MPI_Address(radius, &address);
+    displacements[7] = address - start_address;
 
-        // Build derived datatype
-        MPI_Type_struct(
-            n_members, 
-            member_lengths,
-            displacements,
-            typearr,
-            MPI_Body_type);
+    // Build derived datatype
+    MPI_Type_create_struct( 
+        n_members, 
+        member_lengths,
+        displacements,
+        typearr,
+        MPI_Body_type);
 
-        // Register the datatype
-        MPI_Type_commit(MPI_Body_type);
+    // Register the datatype
+    MPI_Type_commit(MPI_Body_type);
+
+    return;
 }
 
 /// @brief Build the MPI datatype for `struct world`
