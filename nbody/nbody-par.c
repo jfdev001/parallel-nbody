@@ -7,6 +7,7 @@ Author     : Jared G. Frazier, 2795544
 Description: Parallel n-body simulation
 Example Cmd:
 $ # Requires `module load openmpi/gcc`
+$ # Expects the same args as the serial script... though add an additional arg for func to print
 $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi ./nbody-par
 
 Notes:
