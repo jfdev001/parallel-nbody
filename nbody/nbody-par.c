@@ -19,7 +19,6 @@ Notes:
     - Do ghost cells need to be used?
     - How can I debug outputs?
 
-
 For the purpose of handling start/end indices consider offsets of ghost cells
 for example
 if P_0 gets bodies 1-3  &local_bodies[0] <-- 0 1 2
@@ -77,6 +76,8 @@ local_world.bodies = local_bodies
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
@@ -85,7 +86,8 @@ local_world.bodies = local_bodies
 #include <errno.h>
 #include <mpi.h>
 
-
+/* Constants
+*/
 #define GRAVITY     1.1
 #define FRICTION    0.01
 #define MAXBODIES   10000
@@ -93,7 +95,21 @@ local_world.bodies = local_bodies
 #define BOUNCE      -0.9
 #define SEED        27102015
 
+/*  Macros to hide memory layout
+*/
+#define X(w, B)        (w)->bodies[B].x[(w)->old]
+#define XN(w, B)       (w)->bodies[B].x[(w)->old^1]
+#define Y(w, B)        (w)->bodies[B].y[(w)->old]
+#define YN(w, B)       (w)->bodies[B].y[(w)->old^1]
+#define XF(w, B)       (w)->bodies[B].xf
+#define YF(w, B)       (w)->bodies[B].yf
+#define XV(w, B)       (w)->bodies[B].xv
+#define YV(w, B)       (w)->bodies[B].yv
+#define R(w, B)        (w)->bodies[B].radius
+#define M(w, B)        (w)->bodies[B].mass
 
+/* data structures
+*/
 struct bodyType {
     double x[2];        /* Old and new X-axis coordinates */
     double y[2];        /* Old and new Y-axis coordinates */
@@ -206,20 +222,8 @@ build_mpi_world_type(
 
 }
 
-
-/*  Macros to hide memory layout
+/* N-body updates
 */
-#define X(w, B)        (w)->bodies[B].x[(w)->old]
-#define XN(w, B)       (w)->bodies[B].x[(w)->old^1]
-#define Y(w, B)        (w)->bodies[B].y[(w)->old]
-#define YN(w, B)       (w)->bodies[B].y[(w)->old^1]
-#define XF(w, B)       (w)->bodies[B].xf
-#define YF(w, B)       (w)->bodies[B].yf
-#define XV(w, B)       (w)->bodies[B].xv
-#define YV(w, B)       (w)->bodies[B].yv
-#define R(w, B)        (w)->bodies[B].radius
-#define M(w, B)        (w)->bodies[B].mass
-
 static void
 clear_forces(struct world *world)
 {
@@ -238,7 +242,6 @@ compute_forces(struct world *world)
 
     /* Incrementally accumulate forces from each body pair,
        skipping force of body on itself (c == b)....
-       if you use the t+1 update then you are using the wrong forces
     */
     for (b = 0; b < world->bodyCt; ++b) {
         for (c = b + 1; c < world->bodyCt; ++c) {
@@ -313,6 +316,256 @@ compute_positions(struct world *world)
     }
 }
 
+
+/*  Graphic output stuff...
+ */
+
+struct filemap {
+    int            fd;
+    off_t          fsize;
+    void          *map;
+    unsigned char *image;
+};
+
+
+static void
+filemap_close(struct filemap *filemap)
+{
+    if (filemap->fd == -1) {
+        return;
+    }
+    close(filemap->fd);
+    if (filemap->map == MAP_FAILED) {
+        return;
+    }
+    munmap(filemap->map, filemap->fsize);
+}
+
+
+static unsigned char *
+Eat_Space(unsigned char *p)
+{
+    while ((*p == ' ') ||
+           (*p == '\t') ||
+           (*p == '\n') ||
+           (*p == '\r') ||
+           (*p == '#')) {
+        if (*p == '#') {
+            while (*(++p) != '\n') {
+                // skip until EOL
+            }
+        }
+        ++p;
+    }
+
+    return p;
+}
+
+
+static unsigned char *
+Get_Number(unsigned char *p, int *n)
+{
+    p = Eat_Space(p);  /* Eat white space and comments */
+
+    int charval = *p;
+    if ((charval < '0') || (charval > '9')) {
+        errno = EPROTO;
+        return NULL;
+    }
+
+    *n = (charval - '0');
+    charval = *(++p);
+    while ((charval >= '0') && (charval <= '9')) {
+        *n *= 10;
+        *n += (charval - '0');
+        charval = *(++p);
+    }
+
+    return p;
+}
+
+
+static int
+map_P6(const char *filename, int *xdim, int *ydim, struct filemap *filemap)
+{
+    /* The following is a fast and sloppy way to
+       map a color raw PPM (P6) image file
+    */
+    int maxval;
+    unsigned char *p;
+
+    /* First, open the file... */
+    if ((filemap->fd = open(filename, O_RDWR)) < 0) {
+        goto ppm_abort;
+    }
+
+    /* Read size and map the whole file... */
+    filemap->fsize = lseek(filemap->fd, (off_t)0, SEEK_END);
+    filemap->map = mmap(0,                      // Put it anywhere
+                        filemap->fsize,         // Map the whole file
+                        (PROT_READ|PROT_WRITE), // Read/write
+                        MAP_SHARED,             // Not just for me
+                        filemap->fd,            // The file
+                        0);                     // Right from the start
+    if (filemap->map == MAP_FAILED) {
+        goto ppm_abort;
+    }
+
+    /* File should now be mapped; read magic value */
+    p = filemap->map;
+    if (*(p++) != 'P') goto ppm_abort;
+    switch (*(p++)) {
+    case '6':
+        break;
+    default:
+        errno = EPROTO;
+        goto ppm_abort;
+    }
+
+    p = Get_Number(p, xdim);            // Get image width */
+    if (p == NULL) goto ppm_abort;
+    p = Get_Number(p, ydim);            // Get image width */
+    if (p == NULL) goto ppm_abort;
+    p = Get_Number(p, &maxval);         // Get image max value */
+    if (p == NULL) goto ppm_abort;
+
+    /* Should be 8-bit binary after one whitespace char... */
+    if (maxval > 255) {
+        goto ppm_abort;
+    }
+    if ((*p != ' ') &&
+        (*p != '\t') &&
+        (*p != '\n') &&
+        (*p != '\r')) {
+        errno = EPROTO;
+        goto ppm_abort;
+    }
+
+    /* Here we are... next byte begins the 24-bit data */
+    filemap->image = p + 1;
+
+    return 0;
+
+ppm_abort:
+    filemap_close(filemap);
+
+    return -1;
+}
+
+
+static inline void
+color(const struct world *world, unsigned char *image, int x, int y, int b)
+{
+    unsigned char *p = image + (3 * (x + (y * world->xdim)));
+    int tint = ((0xfff * (b + 1)) / (world->bodyCt + 2));
+
+    p[0] = (tint & 0xf) << 4;
+    p[1] = (tint & 0xf0);
+    p[2] = (tint & 0xf00) >> 4;
+}
+
+static inline void
+black(const struct world *world, unsigned char *image, int x, int y)
+{
+    unsigned char *p = image + (3 * (x + (y * world->xdim)));
+
+    p[2] = (p[1] = (p[0] = 0));
+}
+
+static void
+display(const struct world *world, unsigned char *image)
+{
+    double i, j;
+    int b;
+
+    /* For each pixel */
+    for (j = 0; j < world->ydim; ++j) {
+        for (i = 0; i < world->xdim; ++i) {
+            /* Find the first body covering here */
+            for (b = 0; b < world->bodyCt; ++b) {
+                double dy = Y(world, b) - j;
+                double dx = X(world, b) - i;
+                double d = sqrt(dx*dx + dy*dy);
+
+                if (d <= R(world, b)+0.5) {
+                    /* This is it */
+                    color(world, image, i, j, b);
+                    goto colored;
+                }
+            }
+
+            /* No object -- empty space */
+            black(world, image, i, j);
+
+colored:        ;
+        }
+    }
+}
+
+/* Printing world member data
+*/
+
+/// @brief Print the forces in the world structure
+static void 
+print_forces(struct world *world)
+{
+    for (int b = 0; b < world->bodyCt; b++)
+    {
+        printf("%10.3f %10.3f\n", XF(world, b), YF(world, b));
+    }
+    return;
+}
+
+/// @brief Print the velocities in the world structure
+static void 
+print_velocities(struct world *world)
+{
+    for (int b = 0; b < world->bodyCt; b++)
+    {
+        printf("%10.3f %10.3f\n", XV(world, b), YV(world, b));
+    }
+    return;
+}
+
+/// @brief Print the positions in the world structure
+static void 
+print_positions(struct world *world)
+{
+    for (int b = 0; b < world->bodyCt; b++)
+    {
+        printf("%10.3f %10.3f\n", X(world, b), Y(world, b));
+    }
+    return;
+}
+
+static void
+print(struct world *world)
+{
+    int b;
+
+    for (b = 0; b < world->bodyCt; ++b) {
+        printf("%10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n",
+               X(world, b), Y(world, b), XF(world, b), YF(world, b), XV(world, b), YV(world, b));
+    }
+}
+
+static long long
+nr_flops(int n, int steps) {
+  long long nr_flops = 0;
+  // compute forces
+  nr_flops += 20 * (n * (n-1) / 2);
+  // compute velocities
+  nr_flops += 18 * n;
+  // compute positions
+  nr_flops += 4 * n;
+
+  nr_flops *= steps;
+
+  return nr_flops;
+}
+    
+/* Wrappers for phases of main?
+*/
 void preprocess()
 {
 }
