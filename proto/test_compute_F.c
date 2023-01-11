@@ -121,6 +121,11 @@ int main() {
         }
     }
 
+    // add the latter half forces of the i-1 partition to the i partition
+    for (int b = bodyCt/2; b < bodyCt; b++){ // b in [4, 8)
+        XF(p1_world, b) += XF(p0_world, b);
+    }
+
     printf("p0_world:\n");
     print_xf(p0_world, 0, bodyCt);
     printf("\n");
