@@ -5,7 +5,7 @@
     stages of the parallel algorithm.
     
     Example Cmd:
-    $ prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 32 0 nbody.ppm 10000
+    $ prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq-test 32 0 nbody.ppm 10000 --check-world
 */
 
 #include <stdio.h>
@@ -353,17 +353,24 @@ colored:        ;
 }
 
 /// @brief Print the forces in the world structure
-/// TODO: Must implement this... the other computes are trivial
 static void 
 print_forces(struct world *world)
 {
-
+    for (int b = 0; b < world->bodyCt; b++)
+    {
+        printf("%10.3f %10.3f\n", XF(world, b), YF(world, b));
+    }
+    return;
 }
 
 /// @brief Print the velocities in the world structure
 static void 
 print_velocities(struct world *world)
 {
+    for (int b = 0; b < world->bodyCt; b++)
+    {
+        printf("%10.3f %10.3f\n", XV(world, b), YV(world, b));
+    }
     return;
 }
 
@@ -371,6 +378,10 @@ print_velocities(struct world *world)
 static void 
 print_positions(struct world *world)
 {
+    for (int b = 0; b < world->bodyCt; b++)
+    {
+        printf("%10.3f %10.3f\n", X(world, b), Y(world, b));
+    }
     return;
 }
 
@@ -420,6 +431,9 @@ main(int argc, char **argv)
     bool check_positions = false;
     bool check_velocities = false;
 
+    bool check_world = false;
+    bool check_performance = false;
+
     struct world *world = calloc(1, sizeof *world);
     if (world == NULL) {
         fprintf(stderr, "Cannot calloc(world)\n");
@@ -427,11 +441,12 @@ main(int argc, char **argv)
     }
 
     /* Get Parameters */
-    if (argc < 5) {
+    if (argc < 6) {
         fprintf(
             stderr, 
-            "Usage: %s num_bodies secs_per_update ppm_output_file steps [--check-forces, --check-positions, --check-velocities]\n",
-            argv[0]);
+            "Usage: %s num_bodies secs_per_update ppm_output_file steps %s\n",
+            argv[0],
+            "[--check-forces, --check-positions, --check-velocities, --check-world, --check-performance]");
         exit(1);
     }
 
@@ -441,12 +456,26 @@ main(int argc, char **argv)
         if (strcmp(argv[flag], "--check-forces") == 0) 
         {
             check_forces = true;
+
         } else if (strcmp(argv[flag], "--check-positions") == 0)
         {
             check_positions = true;
+
         } else if (strcmp(argv[flag], "--check-velocities") == 0)
         {
             check_velocities = true;
+
+        } else if (strcmp(argv[flag], "--check-world") == 0)
+        {
+            check_world = true;
+
+        } else if (strcmp(argv[flag], "--check-performance") == 0)
+        {
+            check_performance = true;
+
+        } else {
+            printf("EXIT: Unrecognized flag `%s`\n", argv[flag]);
+            exit(1);
         }
     }
 
@@ -471,7 +500,7 @@ main(int argc, char **argv)
     steps = atoi(argv[4]);
 
     // log args
-    fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
+    // fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
 
     /* Initialize simulation data */
     srand(SEED);
@@ -508,19 +537,43 @@ main(int argc, char **argv)
         }
     }
 
+
+    // Getting time
     if (gettimeofday(&end, 0) != 0) {
         fprintf(stderr, "could not do timing\n");
         exit(1);
     }
 
+    // Computing runtime
     rtime = (end.tv_sec + (end.tv_usec / 1000000.0)) - 
                 (start.tv_sec + (start.tv_usec / 1000000.0));
 
 
-    print(world);
+    /*Testing outputs
+    */
 
-    fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
-    fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", nr_flops(world->bodyCt, steps) / 1e9 / rtime);
+   if (check_forces) {
+        print_forces(world);
+   }
+
+   if (check_velocities) {
+        print_velocities(world);
+   }
+
+   if (check_positions) {
+        print_positions(world);
+   }
+
+    // Print whole world
+    if (check_world) {
+        print(world);
+    }
+
+    // Print performance
+    if (check_performance) {
+        fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
+        fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", nr_flops(world->bodyCt, steps) / 1e9 / rtime);
+    }
 
     filemap_close(&image_map);
 
