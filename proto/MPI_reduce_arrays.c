@@ -8,6 +8,8 @@ Bcast(RESULT)
 
 $ mpicc -o MPI_reduce_arrays MPI_reduce_arrays.c
 $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi ./MPI_reduce_arrays
+
+https://stackoverflow.com/questions/16507865/can-mpi-sendbuf-and-recvbuf-be-the-same-thing
 */
 
 #include <stdlib.h>
@@ -42,7 +44,12 @@ int main(int argc, char **argv) {
     print_arr(local_array, rank);
 
     // Try to reduce the sum of elements and broadcast
-    
+    // is this safe??
+    printf("RANK %d: Allreduce\n", rank);
+    MPI_Allreduce(
+        MPI_IN_PLACE, local_array, MAXELES, MPI_DOUBLE, MPI_SUM, comm);
+
+    print_arr(local_array, rank);
 
     // Clean up
     MPI_Finalize();
