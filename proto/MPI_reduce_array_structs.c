@@ -204,8 +204,8 @@ int main(int argc, char **argv) {
     struct world *world = calloc(1, sizeof(*world));
     world->bodyCt = BODYCT;
     for (int b = 0; b < world->bodyCt; b++) {
-        world->bodies[b].xf = 1; 
-        world->bodies[b].yf = 2;
+        world->bodies[b].xf = 1.25; 
+        world->bodies[b].yf = 2.25;
     }
 
     // Perform reduce operation

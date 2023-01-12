@@ -614,6 +614,7 @@ print(struct world *world)
     for (b = 0; b < world->bodyCt; ++b) {
         printf("%10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n",
                X(world, b), Y(world, b), XF(world, b), YF(world, b), XV(world, b), YV(world, b));
+        fflush(stdout);
     }
 }
 
@@ -724,11 +725,6 @@ int main(int argc, char **argv)
         check_performance = true;
     }
 
-    // Print meta information to stderr (shouldn't effect diff check from stdout)
-    if (rank == 0) {
-        fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
-    }
-
     // Set bodies
     if ((world->bodyCt = atol(argv[1])) > MAXBODIES ) {
         fprintf(stderr, "Using only %d bodies...\n", MAXBODIES);
@@ -749,6 +745,11 @@ int main(int argc, char **argv)
     // Set timesteps
     steps = atoi(argv[4]);
 
+    // Print meta information to stderr (shouldn't effect diff check from stdout)
+    if (rank == 0) {
+        fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
+    }
+
     // Initialize nbody world
     initialize_simulation_data(world);
 
@@ -767,16 +768,33 @@ int main(int argc, char **argv)
     for (int step = 0; step < steps; step++) {
         clear_forces(world);
         compute_forces(world, lower_bound, upper_bound);
-        // MPI_Allreduce(MPI_IN_PLACE, world.bodies, world->bodyCt, MPI_Body_type, MPI_Force_sum, comm);
+        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
     }
 
     /****************
-    * Post-processing
+    * NAIVE Post-processing
     *****************/
 
-    // Gather results
+    // Gather results (memory inefficient for now)
+    struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
+    struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
+
+    // naive first
+    MPI_Gather(
+        &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
+        gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
+        0, comm);
+
+    gathered_world->bodyCt = world->bodyCt;
+    for (int b = 0; b < gathered_world->bodyCt; b++) {
+        gathered_world->bodies[b] = gathered_bodies[b];
+    }
+
+    if (rank == 0) {
+        print(gathered_world);
+    }
 
     // tear down mpi
     MPI_Finalize();
