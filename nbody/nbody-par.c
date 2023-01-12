@@ -9,6 +9,7 @@ Example Cmd:
 $ # Requires `module load openmpi/gcc`
 $ # Expects the same args as the serial script... though add an additional arg for func to print
 $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 8 0 nbody.ppm 1000
+$ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 4 0 nbody.ppm 1
 
 Notes:
 * What data needs to be scattered?
@@ -773,9 +774,7 @@ int main(int argc, char **argv)
     // iteration two, there appears to be a problem
     for (int step = 0; step < steps; step++) {
         clear_forces(world);
-        compute_forces(world, lower_bound, upper_bound);
-
-        // This means the forces should be all the same 
+        compute_forces(world, lower_bound, upper_bound); // dependent on all positions but only positions [lb..ub) are updated
         MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);

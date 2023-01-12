@@ -5,7 +5,8 @@
     stages of the parallel algorithm.
     
     Example Cmd:
-    $ prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq-test 8 0 nbody.ppm 1000 --check-world
+    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq-test 8 0 nbody.ppm 1000 --check-world
+    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq-test 4 0 nbody.ppm 1 --check-world
 */
 
 #include <stdio.h>

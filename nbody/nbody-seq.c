@@ -2,7 +2,8 @@
     N-Body simulation code.
     
     Example Cmd:
-    $ prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 32 0 nbody.ppm 10000
+    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 32 0 nbody.ppm 10000
+    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 4 0 nbody.ppm 2
 */
 
 #include <stdio.h>
