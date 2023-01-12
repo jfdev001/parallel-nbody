@@ -1,0 +1,55 @@
+nbody-par.c: In function ‘main’:
+nbody-par.c:700:10: warning: variable ‘check_performance’ set but not used [-Wunused-but-set-variable]
+     bool check_performance = false;
+          ^~~~~~~~~~~~~~~~~
+nbody-par.c:699:10: warning: variable ‘check_world’ set but not used [-Wunused-but-set-variable]
+     bool check_world = false;
+          ^~~~~~~~~~~
+nbody-par.c:698:10: warning: variable ‘check_velocities’ set but not used [-Wunused-but-set-variable]
+     bool check_velocities = false;
+          ^~~~~~~~~~~~~~~~
+nbody-par.c:697:10: warning: variable ‘check_positions’ set but not used [-Wunused-but-set-variable]
+     bool check_positions = false;
+          ^~~~~~~~~~~~~~~
+nbody-par.c:696:10: warning: variable ‘check_forces’ set but not used [-Wunused-but-set-variable]
+     bool check_forces = false;
+          ^~~~~~~~~~~~
+nbody-par.c:692:20: warning: unused variable ‘end’ [-Wunused-variable]
+     struct timeval end;
+                    ^~~
+nbody-par.c:691:20: warning: unused variable ‘start’ [-Wunused-variable]
+     struct timeval start;
+                    ^~~~~
+nbody-par.c:690:12: warning: unused variable ‘rtime’ [-Wunused-variable]
+     double rtime;
+            ^~~~~
+nbody-par.c:688:18: warning: variable ‘secsup’ set but not used [-Wunused-but-set-variable]
+     unsigned int secsup;
+                  ^~~~~~
+nbody-par.c:687:18: warning: unused variable ‘lastup’ [-Wunused-variable]
+     unsigned int lastup = 0;
+                  ^~~~~~
+At top level:
+nbody-par.c:652:1: warning: ‘nr_flops’ defined but not used [-Wunused-function]
+ nr_flops(int n, int steps) {
+ ^~~~~~~~
+nbody-par.c:630:1: warning: ‘print_positions’ defined but not used [-Wunused-function]
+ print_positions(struct world *world)
+ ^~~~~~~~~~~~~~~
+nbody-par.c:619:1: warning: ‘print_velocities’ defined but not used [-Wunused-function]
+ print_velocities(struct world *world)
+ ^~~~~~~~~~~~~~~~
+nbody-par.c:608:1: warning: ‘print_forces’ defined but not used [-Wunused-function]
+ print_forces(struct world *world)
+ ^~~~~~~~~~~~
+nbody-par.c:574:1: warning: ‘display’ defined but not used [-Wunused-function]
+ display(const struct world *world, unsigned char *image)
+ ^~~~~~~
+nbody-par.c: In function ‘main’:
+nbody-par.c:436:8: warning: ‘image_map.map’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+     if (filemap->map == MAP_FAILED) {
+        ^
+nbody-par.c:693:20: note: ‘image_map.map’ was declared here
+     struct filemap image_map; // for graphics
+                    ^~~~~~~~~
+nbody-par.c:693:20: warning: ‘image_map.fsize’ may be used uninitialized in this function [-Wmaybe-uninitialized]

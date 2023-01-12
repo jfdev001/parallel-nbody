@@ -251,7 +251,7 @@ build_mpi_world_type()
     MPI_Type_commit(&WORLD_TYPE);
 }
 
-/* MPI Operators
+/* MPI Funcs
 */
 
 /// @brief Sums X and Y forces of a bodies array
@@ -276,6 +276,33 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
     return;
 }
+
+
+/// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
+void suboptimal_positions_bcast(
+    struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank) {
+    // Dynamically allocate an array of structs
+    struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
+
+    // Gather and then broadcast the data
+    MPI_Gather(
+        &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
+        gathered_bodies, upper_bound-lower_bound, BODY_TYPE, 0, comm);
+    MPI_Bcast(gathered_bodies, world->bodyCt, BODY_TYPE, 0, comm);
+
+    // Copy the positions data from the array of structs into the local world data
+    for (int b = 0; b < world->bodyCt; b++) {
+        XN(world, b) = *gathered_bodies[b].x;
+        YN(world, b) = *gathered_bodies[b].y;
+    }
+
+    // Free the array of structs and set it to null (assignment is auto pass by val?)
+    free(gathered_bodies);
+    gathered_bodies = NULL;
+
+    return;
+}
+
 
 /* Preprocessing
 */
@@ -790,9 +817,8 @@ int main(int argc, char **argv)
         //     &world->bodies[upper_bound], upper_bound-lower_bound, BODY_TYPE,  // the receive amount is based on the send amount of anothe rprocess
         //     comm);
 
-        if (rank == 0){
-            // receive 
-        }
+        suboptimal_positions_bcast(world, lower_bound, upper_bound, comm, rank);
+        MPI_Barrier(comm);
 
         world->old ^= 1;
     }
@@ -821,8 +847,8 @@ int main(int argc, char **argv)
         print(gathered_world);
     }
 
-    printf("RANK %d: Local\n", rank);
-    print(world);
+    // printf("RANK %d: Local\n", rank);
+    // print(world);
 
     // tear down mpi
     MPI_Finalize();
