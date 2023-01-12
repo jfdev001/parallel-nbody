@@ -96,6 +96,9 @@ local_world.bodies = local_bodies
 #define BOUNCE      -0.9
 #define SEED        27102015
 
+#define NUM_BODY_TYPE_MEMBERS 8
+#define NUM_WORLD_TYPE_MEMBERS 5
+
 /*  Macros to hide memory layout
 */
 #define X(w, B)        (w)->bodies[B].x[(w)->old]
@@ -135,8 +138,12 @@ struct world {
     int                 ydim;
 };
 
-/* MPI Datatypes
+/* MPI types and op
 */
+MPI_Datatype BODY_TYPE;
+MPI_Datatype WORLD_TYPE;
+MPI_Op SUM_FORCES;
+
 
 /// @brief Build the MPI datatype for `struct bodyType`
 /// @details 
@@ -144,70 +151,62 @@ struct world {
 /// [Example Code](https://rookiehpc.github.io/mpi/docs/mpi_type_create_struct/index.html)
 /// [Stack Overflow: Sending Array of Structs](https://stackoverflow.com/questions/66622459/sending-array-of-structs-in-mpi)
 static void 
-build_mpi_body_type(
-    double x[2],        
-    double y[2],        
-    double *xf,          
-    double *yf,          
-    double *xv,          
-    double *yv,        
-    double *mass,       
-    double *radius,
-    MPI_Datatype *MPI_Body_type) 
+build_mpi_body_type() 
 {
-    // Number of members in struct
-    const int n_members = 8;
+    // The struct itself
+    struct bodyType body;
 
     // Number of elements in each member
-    int member_lengths[n_members];
+    int member_lengths[NUM_BODY_TYPE_MEMBERS];
     member_lengths[0] = 2;
     member_lengths[1] = 2;
-    for (int member = 2; member < n_members; member++)
+    for (int member = 2; member < NUM_BODY_TYPE_MEMBERS; member++)
         member_lengths[member] = 1;
 
     // Types of members
-    MPI_Datatype typearr[n_members];
-    for (int member = 0; member < n_members; member++)
+    MPI_Datatype typearr[NUM_BODY_TYPE_MEMBERS];
+    for (int member = 0; member < NUM_BODY_TYPE_MEMBERS; member++)
         typearr[member] = MPI_DOUBLE;
 
     // Displacements of members in memory
-    MPI_Aint displacements[n_members];
+    MPI_Aint displacements[NUM_BODY_TYPE_MEMBERS];
     MPI_Aint start_address, address;
+    MPI_Get_address(&body, &start_address);
 
-    displacements[0] = 0; // first member is at displacement 0
-    MPI_Address(x, &start_address);
+    MPI_Get_address(body.x, &address);
+    displacements[0] = address - start_address;
 
-    MPI_Address(y, &address);
+    MPI_Get_address(body.y, &address);
     displacements[1] = address - start_address;
 
-    MPI_Address(xf, &address);
+    MPI_Get_address(&body.xf, &address);
     displacements[2] = address - start_address;
 
-    MPI_Address(yf, &address);
+    MPI_Get_address(&body.yf, &address);
     displacements[3] = address - start_address;
 
-    MPI_Address(xv, &address);
+    MPI_Get_address(&body.xv, &address);
     displacements[4] = address - start_address;
 
-    MPI_Address(yv, &address);
+    MPI_Get_address(&body.yv, &address);
     displacements[5] = address - start_address;
 
-    MPI_Address(mass, &address);
+    MPI_Get_address(&body.mass, &address);
     displacements[6] = address - start_address;
 
-    MPI_Address(radius, &address);
+    MPI_Get_address(&body.radius, &address);
     displacements[7] = address - start_address;
 
     // Build derived datatype
     MPI_Type_create_struct( 
-        n_members, 
+        NUM_BODY_TYPE_MEMBERS, 
         member_lengths,
         displacements,
         typearr,
-        MPI_Body_type);
+        &BODY_TYPE);
 
     // Register the datatype
-    MPI_Type_commit(MPI_Body_type);
+    MPI_Type_commit(&BODY_TYPE);
 
     return;
 }
@@ -215,19 +214,67 @@ build_mpi_body_type(
 /// @brief Build the MPI datatype for `struct world`
 /// @details Is this needed?
 static void 
-build_mpi_world_type(
-    struct bodyType bodies[MAXBODIES],
-    int *bodyCt,
-    int *old,
-    int *xdim,
-    int *ydim,
-    MPI_Datatype *MPI_World_type) 
+build_mpi_world_type() 
 {
+    struct world world;
+    int member_lengths[NUM_WORLD_TYPE_MEMBERS] =   {MAXBODIES, 1,       1,       1,       1};
+    MPI_Datatype typearr[NUM_WORLD_TYPE_MEMBERS] = {BODY_TYPE, MPI_INT, MPI_INT, MPI_INT, MPI_INT};
 
+    MPI_Aint displacements[NUM_WORLD_TYPE_MEMBERS];
+    MPI_Aint start_address, address;
+
+    MPI_Get_address(&world, &start_address);
+
+    MPI_Get_address(world.bodies, &address);
+    displacements[0] = address - start_address;
+
+    MPI_Get_address(&world.bodyCt, &address);
+    displacements[1] = address - start_address;
+
+    MPI_Get_address(&world.old, &address);
+    displacements[2] = address - start_address;
+
+    MPI_Get_address(&world.xdim, &address);
+    displacements[3] = address - start_address;
+
+    MPI_Get_address(&world.ydim, &address);
+    displacements[4] = address - start_address;
+
+    MPI_Type_create_struct(
+        NUM_WORLD_TYPE_MEMBERS,
+        member_lengths,
+        displacements,
+        typearr,
+        &WORLD_TYPE);
+
+    MPI_Type_commit(&WORLD_TYPE);
 }
 
 /* MPI Operators
 */
+
+/// @brief Sums X and Y forces of a bodies array
+/// @details Must match the MPI_User_function parameters
+/// see [Open-mpi docs: MPI_Op_create](https://www.open-mpi.org/doc/v3.0/man3/MPI_Op_create.3.php)
+/// The ref @ [Github: Ch. 8 of Manning Parallel and HPC, 2021](https://github.com/essentialsofparallelcomputing/Chapter8/blob/12f16453c4995b6090192d97cc128d798ff435de/GlobalSums/globalsums.c])
+/// appears to directly use the struct pointer type
+/// [Allreduce on array of structs](https://stackoverflow.com/questions/29184378/mpi-allreduce-on-an-array-inside-a-dynamic-array-of-structure)
+void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
+
+    // Reducing the simulation world is probably the best option
+    // because otherwise the length of the array bodies array will
+    // be MAX ele (which is presumably far less than the bodyCt)
+    struct world *in_world = invec;
+    struct world *inout_world = inoutvec;
+
+    // Sum the forces 
+    for (int b = 0; b < in_world->bodyCt; b++){
+        (inout_world)->bodies[b].xf += (in_world)->bodies[b].xf;
+        (inout_world)->bodies[b].yf += (in_world)->bodies[b].yf;
+    }
+
+    return;
+}
 
 /* Preprocessing
 */
@@ -599,6 +646,11 @@ int main(int argc, char **argv)
     int size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
+
+    // Build MPI types and ops
+    build_mpi_body_type();
+    build_mpi_world_type();
+    MPI_Op_create((MPI_User_function *)sum_forces, true, &SUM_FORCES);
 
     // Measurement variables
     unsigned int lastup = 0;

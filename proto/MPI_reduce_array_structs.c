@@ -46,7 +46,7 @@ struct body {
 
 struct world {
     int bodyCt;
-    struct body bodies[MAXBODIES]; // it seems like a contiguous type will be needed for this 
+    struct body bodies[MAXBODIES]; 
 };
 
 /// @brief Define a custom MPI type for the celestial body
@@ -67,12 +67,10 @@ void build_mpi_body_type(){
 
     MPI_Get_address(&body, &base);
     MPI_Get_address(&body.xf, &member_offset);
-    displacements[1] = member_offset - base; 
-    printf("displacements[1] = %td\n", displacements[1]);
+    displacements[0] = member_offset - base; 
 
     MPI_Get_address(&body.yf, &member_offset);
-    displacements[2] = member_offset - base;
-    printf("displacements[2] = %td\n", displacements[2]);
+    displacements[1] = member_offset - base;
 
     // create type and commit
     MPI_Type_create_struct(
@@ -107,37 +105,29 @@ void build_mpi_world_type(){
 
     // members, elements in members, and member datatypes
     //const int count = 2;
-    int block_lengths[2] = {1, 1};
-    printf("completed `block_lengths[2]`\n"); fflush(stdout);
+    int block_lengths[2] = {1, MAXBODIES}; // could use {1, 1}
 
-    MPI_Datatype types[2] = {MPI_INT, BODY_TYPE};
-    printf("completed `types[2]`\n"); fflush(stdout);
+    MPI_Datatype types[2] = {MPI_INT, BODY_TYPE}; // could use {MPI_INT, N_BODIES_TYPE}
+                                                  // but C arrays are contiguous in mem
 
     /*compute displacements
     */
-    MPI_Aint displacements[1];
-    printf("completed `displacements[2]`\n"); fflush(stdout);
+    MPI_Aint displacements[2];
 
     // base address for struct
     MPI_Aint base;
     struct world world;
     MPI_Get_address(&world, &base);
-    printf("MPI_Get_address(&world, &base)\n"); fflush(stdout);
 
     // member addresses
     MPI_Aint member_offset;
 
     MPI_Get_address(&world.bodyCt, &member_offset);
-    displacements[1] = member_offset - base;
-    printf("displacements[1] = member_offset - base;\n"); fflush(stdout);
-    printf("displacements[1] = %td == %x\n", displacements[1], displacements[1]);
+    displacements[0] = member_offset - base;
 
     MPI_Get_address(&world.bodies[0], &member_offset);
-    displacements[2] = member_offset - base;
-    printf("displacements[2] = member_offset - base;\n"); fflush(stdout);
-    printf("displacements[2] = %td == %x\n", displacements[2], displacements[2]);
+    displacements[1] = member_offset - base;
     
-
     // Create datatype
     MPI_Type_create_struct(
         2,
@@ -182,7 +172,8 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
 void print_world(struct world *world){
     for (int b = 0; b < world->bodyCt; b++){
-        printf("%5.3f %5.3f\n", (world)->bodies[b].xf, (world)->bodies[b].yf);
+        printf("%5.3f %5.3f\n", (world)->bodies[b].xf, (world)->bodies[b].yf); 
+        fflush(stdout);
     }
 }
 
@@ -196,7 +187,6 @@ int main(int argc, char **argv) {
     MPI_Comm_size(comm, &size);
     MPI_Comm_rank(comm, &rank);
 
-
     // Build the mpi types
     build_mpi_body_type();
     printf("RANK %d: completed build_mpi_body_type\n", rank); fflush(stdout);
@@ -204,8 +194,8 @@ int main(int argc, char **argv) {
     build_mpi_n_bodies_type();
     printf("RANK %d: completed build_mpi_n_bodies_type()\n", rank); fflush(stdout);
 
-    // build_mpi_world_type();
-    // printf("RANK %d: completed build_mpi_world_type\n", rank); fflush(stdout);
+    build_mpi_world_type();
+    printf("RANK %d: completed build_mpi_world_type\n", rank); fflush(stdout);
 
     MPI_Op_create((MPI_User_function *)sum_forces, true, &SUM_FORCES);
     printf("RANK %d: completed MPI_Op_create\n", rank); fflush(stdout);
@@ -221,8 +211,10 @@ int main(int argc, char **argv) {
     // Perform reduce operation
     // Expected results for forces should be any given xf == 2
     // and any given yf == 4
-    printf("RANK %d: Perform Summation", rank);
+    MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
+    printf("RANK %d: Perform Summation\n", rank);
     fflush(stdout);
-    
+    print_world(world);
+
     MPI_Finalize();
 }
