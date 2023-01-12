@@ -7,7 +7,10 @@ https://stackoverflow.com/questions/22709015/mpi-derived-type-send/22714292?nore
 https://www.mpi-forum.org/docs/mpi-1.1/mpi-11-html/node80.html
 https://stackoverflow.com/questions/29184378/mpi-allreduce-on-an-array-inside-a-dynamic-array-of-structure
 
-Quinn 2003, Appendix C on debugging (fflush)
+Closest thing to what i'm trying to do here.
+[Stack overflow: MPI Struct of Structs](https://stackoverflow.com/questions/5127049/mpi-send-and-receive-struct-of-structs)
+
+Quinn 2003, Apapendix C on debugging (fflush)
 
 Example:
 mpicc -o MPI_reduce_array_structs MPI_reduce_array_structs.c
