@@ -47,31 +47,31 @@ int main(int argc, char **argv) {
     // Print values
     print_arr(positions, rank);
 
-    int gathered_positions[MAX_ELES];
-    MPI_Gather(
-        &positions[lower_bound], upper_bound-lower_bound, MPI_INT,
-        gathered_positions, upper_bound-lower_bound, MPI_INT, 0, comm); // receive amount might be variable
+    // int gathered_positions[MAX_ELES];
+    // MPI_Gather(
+    //     &positions[lower_bound], upper_bound-lower_bound, MPI_INT,
+    //     gathered_positions, upper_bound-lower_bound, MPI_INT, 0, comm); // receive amount might be variable
 
     // MPI_Gather(
     //     MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
     //     &positions[lower_bound], upper_bound-lower_bound, MPI_INT, 0, comm); 
 
-    // MPI_Allgather(
-    //     MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, 
-    //     &positions[lower_bound], upper_bound-lower_bound, MPI_INT, comm);
+    MPI_Allgather(
+        MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, 
+        &positions[lower_bound], upper_bound-lower_bound, MPI_INT, comm);
 
-    if (rank == 0) {
-        printf("---------\n");
-        printf("RANK %d: Gathered\n", rank+1);
-        print_arr(gathered_positions, rank);
-        //print_arr(positions, rank);
-        printf("---------\n");
-    }
+    // if (rank == 0) {
+    //     printf("---------\n");
+    //     printf("RANK %d: Gathered\n", rank+1);
+    //     print_arr(positions, rank);
+    //     //print_arr(positions, rank);
+    //     printf("---------\n");
+    // }
 
-    MPI_Bcast(gathered_positions, CUR_ELES, MPI_INT, 0, comm);
+    //MPI_Bcast(gathered_positions, CUR_ELES, MPI_INT, 0, comm);
 
     print_arr(positions, rank);
-    print_arr(gathered_positions, rank);
+    //print_arr(gathered_positions, rank);
 
 
 

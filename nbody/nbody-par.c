@@ -283,6 +283,7 @@ void suboptimal_positions_bcast(
     struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank) {
     // Dynamically allocate an array of structs
     struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
+    //struct bodyType gathered_bodies[MAXBODIES];
 
     // Gather and then broadcast the data
     MPI_Gather(
@@ -292,8 +293,8 @@ void suboptimal_positions_bcast(
 
     // Copy the positions data from the array of structs into the local world data
     for (int b = 0; b < world->bodyCt; b++) {
-        XN(world, b) = *gathered_bodies[b].x;
-        YN(world, b) = *gathered_bodies[b].y;
+        XN(world, b) = gathered_bodies[b].x[world->old^1]; // assign most recent XN
+        YN(world, b) = gathered_bodies[b].y[world->old^1]; // assign most recent YN
     }
 
     // Free the array of structs and set it to null (assignment is auto pass by val?)
@@ -808,14 +809,6 @@ int main(int argc, char **argv)
 
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
-
-        // Force updates require newest positions, therefore must do allgather
-        // https://www.open-mpi.org/doc/v3.0/man3/MPI_Allgather.3.php
-
-        // MPI_Allgather(
-        //     &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
-        //     &world->bodies[upper_bound], upper_bound-lower_bound, BODY_TYPE,  // the receive amount is based on the send amount of anothe rprocess
-        //     comm);
 
         suboptimal_positions_bcast(world, lower_bound, upper_bound, comm, rank);
         MPI_Barrier(comm);
