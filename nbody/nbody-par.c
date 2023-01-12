@@ -774,10 +774,26 @@ int main(int argc, char **argv)
     // iteration two, there appears to be a problem
     for (int step = 0; step < steps; step++) {
         clear_forces(world);
-        compute_forces(world, lower_bound, upper_bound); // dependent on all positions but only positions [lb..ub) are updated
-        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
+
+        // Force updates are local and then local forces are summed across processes
+        compute_forces(world, lower_bound, upper_bound);
+        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm); 
+
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
+
+        // Force updates require newest positions, therefore must do allgather
+        // https://www.open-mpi.org/doc/v3.0/man3/MPI_Allgather.3.php
+
+        // MPI_Allgather(
+        //     &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
+        //     &world->bodies[upper_bound], upper_bound-lower_bound, BODY_TYPE,  // the receive amount is based on the send amount of anothe rprocess
+        //     comm);
+
+        if (rank == 0){
+            // receive 
+        }
+
         world->old ^= 1;
     }
 
