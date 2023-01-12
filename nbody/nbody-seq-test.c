@@ -529,12 +529,12 @@ main(int argc, char **argv)
         /* Flip old & new coordinates */
         world->old ^= 1;
 
-        /*Time for a display update?*/ 
-        if (secsup > 0 && (time(0) - lastup) > secsup) {
-            display(world, image_map.image);
-            msync(image_map.map, image_map.fsize, MS_SYNC); /* Force write */
-            lastup = time(0);
-        }
+        // /*Time for a display update?*/ 
+        // if (secsup > 0 && (time(0) - lastup) > secsup) {
+        //     display(world, image_map.image);
+        //     msync(image_map.map, image_map.fsize, MS_SYNC); /* Force write */
+        //     lastup = time(0);
+        // }
     }
 
 

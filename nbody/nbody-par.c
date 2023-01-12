@@ -301,7 +301,7 @@ initialize_simulation_data(struct world *world)
 
 /// @brief Clear force accumulation variables
 static void
-clear_forces(struct world *world, int lower_bound, int upper_bound)
+clear_forces(struct world *world)
 {
     for (int b = 0; b < world->bodyCt; ++b) {
         YF(world, b) = XF(world, b) = 0;
@@ -760,19 +760,22 @@ int main(int argc, char **argv)
     lower_bound = rank*N/P;
     upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // naive index soln
 
-    // printf("RANK %d: lb=%d, ub=%d\n", rank, lower_bound, upper_bound);
+    printf("RANK %d: lb=%d, ub=%d\n", rank, lower_bound, upper_bound);
 
     /****************
     * Main processing
     *****************/
 
     // nbody algo here
+    // NOTE: By removing the all reduce call, this code is functinoally the same
+    // as the sequential code right??
     for (int step = 0; step < steps; step++) {
-        clear_forces(world, lower_bound, upper_bound);
+        clear_forces(world);
         compute_forces(world, lower_bound, upper_bound);
-        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
+        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm); // with a single proc fine
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
+        world->old ^= 1;
     }
 
     /****************
@@ -799,12 +802,8 @@ int main(int argc, char **argv)
         print(gathered_world);
     }
 
-    printf("RANK %d\n", rank);
+    printf("RANK %d: Local\n", rank);
     print(world);
-
-    // if (rank == 1) {
-    //     print(world);
-    // }
 
     // tear down mpi
     MPI_Finalize();
