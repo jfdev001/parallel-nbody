@@ -366,6 +366,7 @@ compute_positions(struct world *world, int lower_bound, int upper_bound)
         if (xn < 0) {
             xn = 0;
             XV(world, b) = -XV(world, b);
+
         } else if (xn >= world->xdim) {
             xn = world->xdim - 1;
             XV(world, b) = -XV(world, b);
@@ -373,6 +374,7 @@ compute_positions(struct world *world, int lower_bound, int upper_bound)
         if (yn < 0) {
             yn = 0;
             YV(world, b) = -YV(world, b);
+            
         } else if (yn >= world->ydim) {
             yn = world->ydim - 1;
             YV(world, b) = -YV(world, b);
@@ -767,12 +769,14 @@ int main(int argc, char **argv)
     *****************/
 
     // nbody algo here
-    // NOTE: By removing the all reduce call, this code is functinoally the same
-    // as the sequential code right??
+    // NOTE: The correct positions and forces are caculated after a single iteration
+    // iteration two, there appears to be a problem
     for (int step = 0; step < steps; step++) {
         clear_forces(world);
         compute_forces(world, lower_bound, upper_bound);
-        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm); // with a single proc fine
+
+        // This means the forces should be all the same 
+        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
         world->old ^= 1;
