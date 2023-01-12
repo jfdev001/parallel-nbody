@@ -8,7 +8,7 @@ Description: Parallel n-body simulation
 Example Cmd:
 $ # Requires `module load openmpi/gcc`
 $ # Expects the same args as the serial script... though add an additional arg for func to print
-$ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 10000
+$ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 8 0 nbody.ppm 1000
 
 Notes:
 * What data needs to be scattered?
@@ -225,7 +225,7 @@ build_mpi_world_type()
 
     MPI_Get_address(&world, &start_address);
 
-    MPI_Get_address(world.bodies, &address);
+    MPI_Get_address(&world.bodies[0], &address);
     displacements[0] = address - start_address;
 
     MPI_Get_address(&world.bodyCt, &address);
@@ -269,8 +269,8 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
     // Sum the forces 
     for (int b = 0; b < in_world->bodyCt; b++){
-        (inout_world)->bodies[b].xf += (in_world)->bodies[b].xf;
-        (inout_world)->bodies[b].yf += (in_world)->bodies[b].yf;
+        XF(inout_world, b) += XF(in_world, b);
+        YF(inout_world, b) += YF(in_world, b);
     }
 
     return;
@@ -301,7 +301,7 @@ initialize_simulation_data(struct world *world)
 
 /// @brief Clear force accumulation variables
 static void
-clear_forces(struct world *world)
+clear_forces(struct world *world, int lower_bound, int upper_bound)
 {
     for (int b = 0; b < world->bodyCt; ++b) {
         YF(world, b) = XF(world, b) = 0;
@@ -760,13 +760,15 @@ int main(int argc, char **argv)
     lower_bound = rank*N/P;
     upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // naive index soln
 
+    // printf("RANK %d: lb=%d, ub=%d\n", rank, lower_bound, upper_bound);
+
     /****************
     * Main processing
     *****************/
 
     // nbody algo here
     for (int step = 0; step < steps; step++) {
-        clear_forces(world);
+        clear_forces(world, lower_bound, upper_bound);
         compute_forces(world, lower_bound, upper_bound);
         MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm);
         compute_velocities(world, lower_bound, upper_bound);
@@ -793,8 +795,16 @@ int main(int argc, char **argv)
     }
 
     if (rank == 0) {
+        printf("RANK %d: Gathered\n", rank);
         print(gathered_world);
     }
+
+    printf("RANK %d\n", rank);
+    print(world);
+
+    // if (rank == 1) {
+    //     print(world);
+    // }
 
     // tear down mpi
     MPI_Finalize();
