@@ -10,6 +10,13 @@ https://stackoverflow.com/questions/29184378/mpi-allreduce-on-an-array-inside-a-
 Closest thing to what i'm trying to do here.
 [Stack overflow: MPI Struct of Structs](https://stackoverflow.com/questions/5127049/mpi-send-and-receive-struct-of-structs)
 
+Struct of Structs w.r.t Particles? DOUBLE CHECK THIS!!!
+[Supercomputing and Apps Devlopment Presentation](https://materials.prace-ri.eu/386/1/MPI2-DataTypes_2014.pdf)
+
+[Openmpi forum: Struct Creation](https://users.open-mpi.narkive.com/ZmgS4RgF/ompi-mpi-type-struct-for-structs-with-dynamic-arrays)
+
+
+
 Quinn 2003, Apapendix C on debugging (fflush)
 
 Example:
