@@ -279,17 +279,17 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
 
 /// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
-void suboptimal_positions_bcast(
+void suboptimal_allgather(
     struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank) {
 
     // Dynamically allocate an array of structs
     struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
-    //struct bodyType gathered_bodies[MAXBODIES];
 
     // Gather and then broadcast the data
     MPI_Gather(
         &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
         gathered_bodies, upper_bound-lower_bound, BODY_TYPE, 0, comm);
+        
     MPI_Bcast(gathered_bodies, world->bodyCt, BODY_TYPE, 0, comm);
 
     // Copy the positions data from the array of structs into the local world data
@@ -821,7 +821,7 @@ int main(int argc, char **argv)
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
 
-        suboptimal_positions_bcast(world, lower_bound, upper_bound, comm, rank);
+        suboptimal_allgather(world, lower_bound, upper_bound, comm, rank);
 
         world->old ^= 1;
     }
