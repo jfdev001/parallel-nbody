@@ -281,6 +281,7 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 /// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
 void suboptimal_positions_bcast(
     struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank) {
+
     // Dynamically allocate an array of structs
     struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
     //struct bodyType gathered_bodies[MAXBODIES];
@@ -688,9 +689,9 @@ int main(int argc, char **argv)
     unsigned int lastup = 0;
     unsigned int secsup;
     int steps;                // number of timesteps
+    double start;
+    double stop;
     double rtime;
-    struct timeval start;
-    struct timeval end;       
     struct filemap image_map; // for graphics
 
     // For testing output
@@ -791,11 +792,17 @@ int main(int argc, char **argv)
     lower_bound = rank*N/P;
     upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // naive index soln
 
-    printf("RANK %d: lb=%d, ub=%d\n", rank, lower_bound, upper_bound);
+    // printf("RANK %d: lb=%d, ub=%d\n", rank, lower_bound, upper_bound);
 
     /****************
     * Main processing
     *****************/
+
+    // start timer
+    MPI_Barrier(comm);
+    if (rank == 0) {
+        start = MPI_Wtime();
+    }
 
     // nbody algo here
     // NOTE: The correct positions and forces are caculated after a single iteration
@@ -813,6 +820,12 @@ int main(int argc, char **argv)
         suboptimal_positions_bcast(world, lower_bound, upper_bound, comm, rank);
 
         world->old ^= 1;
+    }
+
+    // stop timer
+    if (rank == 0) {
+        stop = MPI_Wtime();
+        rtime = stop - start;
     }
 
     /****************
@@ -834,9 +847,10 @@ int main(int argc, char **argv)
         gathered_world->bodies[b] = gathered_bodies[b];
     }
 
+    // Print results
     if (rank == 0) {
-        printf("RANK %d: Gathered\n", rank);
         print(gathered_world);
+        fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
     }
 
     // printf("RANK %d: Local\n", rank);
