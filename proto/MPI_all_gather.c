@@ -54,13 +54,13 @@ int main(int argc, char **argv) {
         rcvcounts[r] = (r == P-1 ? (r+1)*N/P + N%P : (r+1)*N/P) - (r*N/P);
     }
 
-    displacements[0] = 2;
-    displacements[1] = 4;
-    displacements[2] = 6;
+    displacements[0] = 0;
+    displacements[1] = 2;
+    displacements[2] = 5;
 
     rcvcounts[0] = 2;
-    rcvcounts[1] = 2;
-    rcvcounts[2] = 2;
+    rcvcounts[1] = 3;
+    rcvcounts[2] = 4;
 
     if (rank == 0) {
         printf("Displacements -- ");
@@ -89,9 +89,8 @@ int main(int argc, char **argv) {
     //     MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, 
     //     &positions[lower_bound], upper_bound-lower_bound, MPI_INT, comm);
 
-    MPI_Allgatherv(
-        MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-        positions, rcvcounts, displacements, MPI_DOUBLE, comm);
+    MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, positions, rcvcounts, displacements, MPI_DOUBLE, comm);
+    // MPI_Allgatherv(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, positions, {2,3,4}, {0, 2, 5}, MPI_DOUBLE, comm);
 
     // if (rank == 0) {
     //     printf("---------\n");

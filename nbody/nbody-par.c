@@ -344,6 +344,8 @@ clear_forces(struct world *world)
 static void
 compute_forces(struct world *world, int lower_bound, int upper_bound)
 {
+    // wait for the positions to available from the other processes
+    // when c+1 == upperbound
     for (int b = lower_bound; b < upper_bound; ++b) {
         for (int c = b + 1; c < world->bodyCt; ++c) {
             double dx = X(world, c) - X(world, b);
