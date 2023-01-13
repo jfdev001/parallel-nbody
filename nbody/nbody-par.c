@@ -296,6 +296,8 @@ void suboptimal_positions_bcast(
     for (int b = 0; b < world->bodyCt; b++) {
         XN(world, b) = gathered_bodies[b].x[world->old^1]; // assign most recent XN
         YN(world, b) = gathered_bodies[b].y[world->old^1]; // assign most recent YN
+        XV(world, b) = gathered_bodies[b].xv; // are these necessary?? is my gathering function wrong???
+        YV(world, b) = gathered_bodies[b].yv; 
     }
 
     // Free the array of structs and set it to null
@@ -832,24 +834,24 @@ int main(int argc, char **argv)
     * NAIVE Post-processing
     *****************/
 
-    // Gather results (memory inefficient for now)
-    struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
-    struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
+    // // Gather results (memory inefficient for now)
+    // struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
+    // struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
 
-    // naive first
-    MPI_Gather(
-        &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
-        gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
-        0, comm);
+    // // naive first
+    // MPI_Gather(
+    //     &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
+    //     gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
+    //     0, comm);
 
-    gathered_world->bodyCt = world->bodyCt;
-    for (int b = 0; b < gathered_world->bodyCt; b++) {
-        gathered_world->bodies[b] = gathered_bodies[b];
-    }
+    // gathered_world->bodyCt = world->bodyCt;
+    // for (int b = 0; b < gathered_world->bodyCt; b++) {
+    //     gathered_world->bodies[b] = gathered_bodies[b];
+    // }
 
     // Print results
     if (rank == 0) {
-        print(gathered_world);
+        print(world);
         fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
     }
 
