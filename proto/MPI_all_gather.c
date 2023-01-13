@@ -4,6 +4,8 @@ a different part of an array
 
 mpicc -o MPI_all_gather MPI_all_gather.c
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi ./MPI_all_gather
+
+https://www.mpi-forum.org/docs/mpi-1.1/mpi-11-html/node70.html#Node70
 */
 
 #include <stdlib.h>
@@ -13,9 +15,9 @@ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi ./MPI_all_gather
 #define MAX_ELES 100
 #define CUR_ELES 6
 
-void print_arr(int arr[], int rank) {
+void print_arr(int arr[], int rank, int size) {
     printf("RANK %d: ", rank+1);
-    for (int i = 0; i < CUR_ELES; i++)
+    for (int i = 0; i < size; i++)
         printf("%d ", arr[i]);
     printf("\n"); 
 }
@@ -39,13 +41,32 @@ int main(int argc, char **argv) {
     int P = size;
     lower_bound = rank*N/P;
     upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; 
+    int *displacements = malloc(size*sizeof(int));
+    int *rcvcounts = malloc(size*sizeof(int));
+    for (int r = 0; r < P; r++) {
+        displacements[r] = r*N/P;
+        rcvcounts[r] = (r == P-1 ? (r+1)*N/P + N%P : (r+1)*N/P) - (r*N/P);
+    }
+
+    displacements[0] = 3;
+    displacements[1] = 0;
+
+    rcvcounts[0] = 3;
+    rcvcounts[1] = 3;
+
+    if (rank == 0) {
+        printf("Displacements -- ");
+        print_arr(displacements, rank, size);
+        printf("Rcvcounts -- ");
+        print_arr(rcvcounts, rank, size);
+    }
 
     // Initialize the values of the array based on the process
     for (int b = lower_bound; b < upper_bound; b++)
         positions[b] = rank+1;
 
     // Print values
-    print_arr(positions, rank);
+    print_arr(positions, rank, CUR_ELES);
 
     // int gathered_positions[MAX_ELES];
     // MPI_Gather(
@@ -56,9 +77,13 @@ int main(int argc, char **argv) {
     //     MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
     //     &positions[lower_bound], upper_bound-lower_bound, MPI_INT, 0, comm); 
 
-    MPI_Allgather(
-        MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, 
-        &positions[lower_bound], upper_bound-lower_bound, MPI_INT, comm);
+    // MPI_Allgather(
+    //     MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, 
+    //     &positions[lower_bound], upper_bound-lower_bound, MPI_INT, comm);
+
+    MPI_Allgatherv(
+        MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+        positions, rcvcounts, displacements, MPI_DOUBLE, comm);
 
     // if (rank == 0) {
     //     printf("---------\n");
@@ -70,7 +95,7 @@ int main(int argc, char **argv) {
 
     //MPI_Bcast(gathered_positions, CUR_ELES, MPI_INT, 0, comm);
 
-    print_arr(positions, rank);
+    print_arr(positions, rank, CUR_ELES);
     //print_arr(gathered_positions, rank);
 
 
