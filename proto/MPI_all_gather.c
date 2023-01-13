@@ -22,6 +22,12 @@ void print_arr(int arr[], int rank, int size) {
     printf("\n"); 
 }
 
+void copy_array(int *arr1, int *arr2, int arr_size){
+    for (int i = 0; i < arr_size; i++) {
+        arr1[i] = arr2[i];
+    }
+}
+
 int main(int argc, char **argv) {
 
 
@@ -48,11 +54,13 @@ int main(int argc, char **argv) {
         rcvcounts[r] = (r == P-1 ? (r+1)*N/P + N%P : (r+1)*N/P) - (r*N/P);
     }
 
-    displacements[0] = 3;
-    displacements[1] = 0;
+    displacements[0] = 2;
+    displacements[1] = 4;
+    displacements[2] = 6;
 
-    rcvcounts[0] = 3;
-    rcvcounts[1] = 3;
+    rcvcounts[0] = 2;
+    rcvcounts[1] = 2;
+    rcvcounts[2] = 2;
 
     if (rank == 0) {
         printf("Displacements -- ");

@@ -297,7 +297,7 @@ void suboptimal_positions_bcast(
         YN(world, b) = gathered_bodies[b].y[world->old^1]; // assign most recent YN
     }
 
-    // Free the array of structs and set it to null (assignment is auto pass by val?)
+    // Free the array of structs and set it to null
     free(gathered_bodies);
     gathered_bodies = NULL;
 
@@ -811,7 +811,6 @@ int main(int argc, char **argv)
         compute_positions(world, lower_bound, upper_bound);
 
         suboptimal_positions_bcast(world, lower_bound, upper_bound, comm, rank);
-        MPI_Barrier(comm);
 
         world->old ^= 1;
     }
