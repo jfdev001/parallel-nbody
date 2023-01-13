@@ -9,7 +9,7 @@ Example Cmd:
 $ # Requires `module load openmpi/gcc`
 $ # Expects the same args as the serial script... though add an additional arg for func to print
 $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 8 0 nbody.ppm 1000
-$ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 4 0 nbody.ppm 1
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 4 0 nbody.ppm 1
 
 Notes:
 * What data needs to be scattered?
@@ -138,6 +138,8 @@ struct world {
     int                 xdim;
     int                 ydim;
 };
+
+static void print(struct world *world);
 
 /* MPI types and op
 */
@@ -364,8 +366,8 @@ compute_forces(struct world *world, int lower_bound, int upper_bound)
             */
             XF(world, b) += xf;
             YF(world, b) += yf;
-            XF(world, c) -= xf;
-            YF(world, c) -= yf;
+            // XF(world, c) -= xf;
+            // YF(world, c) -= yf;
         }
     }
 }
@@ -816,7 +818,7 @@ int main(int argc, char **argv)
 
         // Force updates are local and then local forces are summed across processes
         compute_forces(world, lower_bound, upper_bound);
-        MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm); 
+        // MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm); 
 
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
@@ -837,23 +839,23 @@ int main(int argc, char **argv)
     *****************/
 
     // // Gather results (memory inefficient for now)
-    // struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
-    // struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
+    struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
+    struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
 
-    // // naive first
-    // MPI_Gather(
-    //     &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
-    //     gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
-    //     0, comm);
+    // naive first
+    MPI_Gather(
+        &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
+        gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
+        0, comm);
 
-    // gathered_world->bodyCt = world->bodyCt;
-    // for (int b = 0; b < gathered_world->bodyCt; b++) {
-    //     gathered_world->bodies[b] = gathered_bodies[b];
-    // }
+    gathered_world->bodyCt = world->bodyCt;
+    for (int b = 0; b < gathered_world->bodyCt; b++) {
+        gathered_world->bodies[b] = gathered_bodies[b];
+    }
 
     // Print results
     if (rank == 0) {
-        print(world);
+        print(gathered_world);
         fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
     }
 
