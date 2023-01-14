@@ -222,10 +222,8 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
 /// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
 void suboptimal_allgather(
-    struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank) {
-
-    // Dynamically allocate an array of structs
-    struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
+    struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank,
+    struct bodyType *gathered_bodies) {
 
     // Gather and then broadcast the data
     // TODO: Need to modify the receive to be information about what the subsequent
@@ -249,11 +247,6 @@ void suboptimal_allgather(
         XV(world, b) = gathered_bodies[b].xv; 
         YV(world, b) = gathered_bodies[b].yv; 
     }
-    MPI_Barrier(comm);
-
-    // Free the array of structs and set it to null
-    free(gathered_bodies);
-    gathered_bodies = NULL;
 
     return;
 }
@@ -466,6 +459,10 @@ int* get_prun_compute_args(char *prun_env_fname, int *arg_array){
             foundargs++;
         }
     }
+
+    // PRUN multiplies the -np <arg> and -<> when computing PRUN_CPUS
+    // therefore, dividing tells the actual arg passed to the script
+    arg_array[0] /= arg_array[1]; 
 
     // close file
     fclose(fptr);
@@ -801,15 +798,20 @@ int main(int argc, char **argv)
         fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
     }
 
-    // Gets information needed about processes
+    // Gets information needed about processes for printing experimental info
     if (running_experiments && rank == 0) {
+
         // For writing stdout to a file
         char *prun_env_fname = get_prun_environment_fname();
         get_prun_compute_args(prun_env_fname, prun_compute_args);
     }
+    MPI_Barrier(comm); // make sure root catches up to this 
 
     // Initialize nbody world and then bcast it 
     initialize_simulation_data(world);
+
+    // Needed for gathering positions later
+    struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
 
     // Determine bounds for computation
     int lower_bound, upper_bound;
@@ -817,6 +819,8 @@ int main(int argc, char **argv)
     int P = size;
     lower_bound = rank*N/P;
     upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // naive index soln
+
+
 
     /****************
     * Main processing
@@ -835,7 +839,7 @@ int main(int argc, char **argv)
         compute_positions(world, lower_bound, upper_bound);
 
         // Allgather of bodies (includes position information needed for compute forces)
-        suboptimal_allgather(world, lower_bound, upper_bound, comm, rank);
+        suboptimal_allgather(world, lower_bound, upper_bound, comm, rank, gathered_bodies);
 
         world->old ^= 1;
     }
@@ -870,7 +874,11 @@ int main(int argc, char **argv)
         }
     }
 
-    // tear down mpi
+    // Cleanup
     MPI_Type_free(&BODY_TYPE);
+    free(gathered_bodies);
+    gathered_bodies = NULL;
+    free(world);
+    world = NULL;
     MPI_Finalize();
 }
