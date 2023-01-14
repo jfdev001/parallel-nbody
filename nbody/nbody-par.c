@@ -6,73 +6,9 @@ Due        : 2023-02-03
 Author     : Jared G. Frazier, 2795544
 Description: Parallel n-body simulation
 Example Cmd:
-$ # Requires `module load openmpi/gcc`
-$ # Expects the same args as the serial script... though add an additional arg for func to print
-$ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 8 0 nbody.ppm 1000
-prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000
-
-Notes:
-* What data needs to be scattered?
-    - What MPI datatypes might be used here?
-    - Think about the actual parallelization of this ...
-* What are the data dependencies of different functions?
-    - Could latency hiding (non-blocking calls) be used?
-    - Do ghost cells need to be used?
-    - How can I debug outputs?
-
-For the purpose of handling start/end indices consider offsets of ghost cells
-for example
-if P_0 gets bodies 1-3  &local_bodies[0] <-- 0 1 2
-if P_1 gets bodies 4-6  &local_bodies[3] <-- x x x 3 4 5 x x x
-if P_2 gets bodies 7-9  &local_bodies[6] <-- x x x x x x 6 7 8
-therefore, there is an offset for accessing the local bodies and interproc
-comm can simply be to the appropriate cells 
-
-The indices for b and c start and stop for the computable portions of the 
-the bodies (i.e., what the process actually has access to) is 
-b in range(rank*n/p, (rank+1)*n/p)
-c in range(rank*n/p + 1, (rank+1)*n/p) <--- could do lazy if rank == last, n/p+n%p
-offset = rank*n/p
-
-If i split up the data... then i end up requiring communication between
-all processes because all processes must update forces
-based on other bodies 
-
-Repeat calculations should be fine. Consider the following situation:
-P = 2, N = 6
-P_0 = [0, 1, 2, x, x, x]
-P_1 = [x, x, x, 3, 4, 5]
-compute_forces(P_1, P_0) --> 3 -> 0, 1, 2; 4 -> 0, 1, 2; 5 -> 0, 1, 2
-compute_forces(P_0, P_1) --> 0 -> 3, 4, 5; 1 -> 3, 4, 5; 2 -> 3, 4, 5
-These overlap
-P_1: (3, 0); (3, 1); (3, 2); (4, 0)
-P_0: (0, 3);                 (0, 4) ... etc.
-The alternative would be increasing the communication overhead and 
-load balancing computations 
-
-For the P = 2, N = 6 case, the following communication would occur:
-```
-data = scatter(world.bodies)
-P0: send(&data[rank*n/p],    n/p, P1)  # 
-P1: recv(&data[(rank-1)*n/p, n/p, P0]) # [x->0, x->1, x->2, 3, 4, 5]
-```
-
-How independent can these updates be? Consider the following:
-P0: b = 0, 1... 
-P1: b = 2, 3
-
-Pseudocode:
-
-struct bodyType bodies[MAX]; // big allocation on stack for all procs
-
-if root 
-    initialize(world)
-
-struct bodyType local_bodies[MAX] = scatterv(world.bodies)
-struct world *local_world = calloc(1, sizeof(*local_world)) // why is this malloced?
-
-local_world.bodies = local_bodies 
-
+# Requires `module load openmpi/gcc`
+# Expects the same args as the serial script
+# could additional arg for printing meta information
 */
 
 #include <stdio.h>
@@ -144,9 +80,8 @@ static void print(struct world *world);
 /* MPI types and op
 */
 MPI_Datatype BODY_TYPE;
-MPI_Datatype WORLD_TYPE;
-MPI_Op SUM_FORCES;
-
+MPI_Datatype WORLD_TYPE; // not used
+MPI_Op SUM_FORCES;       // not used
 
 /// @brief Build the MPI datatype for `struct bodyType`
 /// @details 
@@ -214,8 +149,7 @@ build_mpi_body_type()
     return;
 }
 
-/// @brief Build the MPI datatype for `struct world`
-/// @details Is this needed?
+/// @brief (NOT USED!) Build the MPI datatype for `struct world`
 static void 
 build_mpi_world_type() 
 {
@@ -256,7 +190,7 @@ build_mpi_world_type()
 /* MPI Funcs
 */
 
-/// @brief Sums X and Y forces of a bodies array
+/// @brief (NOT USED!) Sums X and Y forces of a bodies array
 /// @details Must match the MPI_User_function parameters
 /// see [Open-mpi docs: MPI_Op_create](https://www.open-mpi.org/doc/v3.0/man3/MPI_Op_create.3.php)
 /// The ref @ [Github: Ch. 8 of Manning Parallel and HPC, 2021](https://github.com/essentialsofparallelcomputing/Chapter8/blob/12f16453c4995b6090192d97cc128d798ff435de/GlobalSums/globalsums.c])
@@ -342,7 +276,7 @@ initialize_simulation_data(struct world *world)
 /* N-body updates
 */
 
-/// @brief Clear force accumulation variables
+/// @brief Clear force accumulation variables for all bodies
 static void
 clear_forces(struct world *world)
 {
@@ -351,7 +285,7 @@ clear_forces(struct world *world)
     }
 }
 
-/// @brief  Incrementally accumulate forces from each body pair
+/// @brief  Compute forces on bodies within the given bounds
 static void
 compute_forces(struct world *world, int lower_bound, int upper_bound)
 {
@@ -371,18 +305,15 @@ compute_forces(struct world *world, int lower_bound, int upper_bound)
             double xf = force * cos(angle);
             double yf = force * sin(angle);
 
-            /* Slightly sneaky...
-               force of b on c is negative of c on b;
-            */
+            // Update force for this body only... no need to update the force
+            // on body c because that will be updated on other procs
             XF(world, b) += xf;
             YF(world, b) += yf;
-            // XF(world, c) -= xf;
-            // YF(world, c) -= yf;
         }
     }
 }
 
-/// @brief Compute using body members
+/// @brief Compute velocities of bodies within given bounds
 static void
 compute_velocities(struct world *world, int lower_bound, int upper_bound)
 {
@@ -400,7 +331,7 @@ compute_velocities(struct world *world, int lower_bound, int upper_bound)
     }
 }
 
-/// @brief Compute new positions of bodies
+/// @brief Compute positions of bodies within given bounds
 static void
 compute_positions(struct world *world, int lower_bound, int upper_bound)
 {
@@ -696,27 +627,19 @@ int main(int argc, char **argv)
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
 
-    // Build MPI types and ops
+    // Build MPI type for the N-body
     build_mpi_body_type();
-    build_mpi_world_type();
-    MPI_Op_create((MPI_User_function *)sum_forces, true, &SUM_FORCES);
 
     // Measurement variables
     unsigned int lastup = 0;
     unsigned int secsup;
-    int steps;                // number of timesteps
+    int steps;                         // number of timesteps
     double start;
     double stop;
     double rtime;
-    struct filemap image_map; // for graphics
-
-    // For testing output
-    bool check_forces = false;
-    bool check_positions = false;
-    bool check_velocities = false;
-    bool check_world = false;
-    bool check_performance = false;
-
+    struct filemap image_map;          // for graphics
+    bool running_experiments = false;  // for logging results of experiments
+    
     // Allocate nbody world
     struct world *world = calloc(1, sizeof *world);
     if (world == NULL) {
@@ -724,53 +647,24 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    /* Get Parameters */
+    /* Get Parameters 
+    */
+
+   // Indicate usage
     if (argc < 5) {
         if (rank == 0) {
             fprintf(
                 stderr, 
                 "Usage: %s num_bodies secs_per_update ppm_output_file steps %s\n",
                 argv[0],
-                "[--check-forces, --check-positions, --check-velocities, --check-world, --check-performance]");
+                "[--run-xps]");
         }
-        exit(1);
+        exit(1); 
     }
 
-    // Set testing flags
-    for (int flag = 5; flag < argc; flag++)
-    {
-        if (strcmp(argv[flag], "--check-forces") == 0) 
-        {
-            check_forces = true;
-
-        } else if (strcmp(argv[flag], "--check-positions") == 0)
-        {
-            check_positions = true;
-
-        } else if (strcmp(argv[flag], "--check-velocities") == 0)
-        {
-            check_velocities = true;
-
-        } else if (strcmp(argv[flag], "--check-world") == 0)
-        {
-            check_world = true;
-
-        } else if (strcmp(argv[flag], "--check-performance") == 0)
-        {
-            check_performance = true;
-
-        } else {
-            if (rank == 0) { 
-                printf("EXIT: Unrecognized flag `%s`\n", argv[flag]); 
-            }
-            exit(1);
-        }
-    }
-
-    // For production
-    if (argc == 5){
-        check_world = true;
-        check_performance = true;
+    // Set experiment flag
+    if (argc == 5 && strcmp(argv[5], "--run-xps") == 0) {
+        running_experiments = true;
     }
 
     // Set bodies
@@ -793,7 +687,7 @@ int main(int argc, char **argv)
     // Set timesteps
     steps = atoi(argv[4]);
 
-    // Print meta information to stderr (shouldn't effect diff check from stdout)
+    // Print meta information to stderr
     if (rank == 0) {
         fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
     }
@@ -808,27 +702,23 @@ int main(int argc, char **argv)
     lower_bound = rank*N/P;
     upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // naive index soln
 
-    // printf("RANK %d: lb=%d, ub=%d\n", rank, lower_bound, upper_bound);
-
     /****************
     * Main processing
     *****************/
 
     // start timer
-    MPI_Barrier(comm);
     if (rank == 0) {
         start = MPI_Wtime();
     }
 
-    // nbody algo here
-    // NOTE: The correct positions and forces are caculated after a single iteration
-    // iteration two, there appears to be a problem
+    // Nbody algo
     for (int step = 0; step < steps; step++) {
         clear_forces(world);
         compute_forces(world, lower_bound, upper_bound);
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
 
+        // Allgather of bodies (includes position information needed for compute forces)
         suboptimal_allgather(world, lower_bound, upper_bound, comm, rank);
 
         world->old ^= 1;
@@ -844,31 +734,17 @@ int main(int argc, char **argv)
     * NAIVE Post-processing
     *****************/
 
-    // // // Gather results (memory inefficient for now)
-    // struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
-    // struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
-
-    // // naive first
-    // MPI_Gather(
-    //     &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
-    //     gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
-    //     0, comm);
-
-    // gathered_world->bodyCt = world->bodyCt;
-    // for (int b = 0; b < gathered_world->bodyCt; b++) {
-    //     gathered_world->bodies[b] = gathered_bodies[b];
-    // }
-
     // Print results
     if (rank == 0) {
-        //print(gathered_world);
-        print(world);
-        fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
+        if (!running_experiments) {
+            print(world);
+            fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
+        } else {
+            printf("");
+        }
     }
 
-    // printf("RANK %d: Local\n", rank);
-    // print(world);
-
     // tear down mpi
+    MPI_Type_free(&BODY_TYPE);
     MPI_Finalize();
 }
