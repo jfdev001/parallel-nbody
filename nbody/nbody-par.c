@@ -5,10 +5,13 @@ Professor  : Dr. H.E. Bal
 Due        : 2023-02-03
 Author     : Jared G. Frazier, 2795544
 Description: Parallel n-body simulation
-Example Cmd:
+
+Usage:
+```
 # Requires `module load openmpi/gcc`
-# Expects the same args as the serial script
-# could additional arg for printing meta information
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps
+```
 */
 
 #include <stdio.h>
@@ -19,9 +22,12 @@ Example Cmd:
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <dirent.h>
+#include <regex.h>
 #include <mpi.h>
 
 /* Constants
@@ -363,6 +369,56 @@ compute_positions(struct world *world, int lower_bound, int upper_bound)
     }
 }
 
+/* Post-processing
+*/
+
+/// @brief Get the PRUN environment file name
+/// @details 
+/// [Get Files in Dir](https://www.tutorialspoint.com/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-cplusplus)
+/// [C Regex](https://stackoverflow.com/questions/1085083/regular-expressions-in-c-examples)
+char* get_prun_environment_fname(){
+    regex_t regex;
+    int reti;
+    bool match = false;
+    char *fname;
+    char msgbuf[100];
+
+    /* Compile regular expression */
+    reti = regcomp(&regex, ".PRUN_ENVIRONMENT*", 0);
+    if (reti) {
+        fprintf(stderr, "Could not compile regex\n");
+        exit(1);
+    } 
+    
+    // get lists of directories
+    DIR *dr;
+    struct dirent *en;
+    dr = opendir(".");
+    if (dr) {
+        en = readdir(dr);
+        while (en != NULL && !match){
+             /* Execute regular expression */
+            reti = regexec(&regex, en->d_name, 0, NULL, 0);
+            if (!reti) {
+                match = true;
+                fname = en->d_name;
+            }
+            else if (reti == REG_NOMATCH) {
+                //puts("No match");
+            }
+            else {
+                regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+                fprintf(stderr, "Regex match failed: %s\n", msgbuf);
+                exit(1);
+            }
+
+            en = readdir(dr);
+        }
+        close(dr);
+    }
+    regfree(&regex);
+    return fname;
+}
 
 /*  Graphic output stuff...
  */
@@ -637,6 +693,7 @@ int main(int argc, char **argv)
     double start;
     double stop;
     double rtime;
+    double gflops;
     struct filemap image_map;          // for graphics
     bool running_experiments = false;  // for logging results of experiments
     
@@ -663,7 +720,7 @@ int main(int argc, char **argv)
     }
 
     // Set experiment flag
-    if (argc == 5 && strcmp(argv[5], "--run-xps") == 0) {
+    if (argc == 6 && (strcmp(argv[5], "--run-xps") == 0)) {
         running_experiments = true;
     }
 
@@ -692,7 +749,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
     }
 
-    // Initialize nbody world
+    // Initialize nbody world and then bcast it 
     initialize_simulation_data(world);
 
     // Determine bounds for computation
@@ -731,16 +788,29 @@ int main(int argc, char **argv)
     }
 
     /****************
-    * NAIVE Post-processing
+    * Post-processing
     *****************/
+
+    // NOTE: During the gathering of positions, I also gather the
+    // the velocities (XV, YV) and forces (XF, YF)... thus any
+    // world could be printed at the end and they will all have the
+    // same data for those members
 
     // Print results
     if (rank == 0) {
+        gflops = nr_flops(world->bodyCt, steps) / 1e9 / rtime;
         if (!running_experiments) {
             print(world);
             fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
+            fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", gflops);
         } else {
-            printf("");
+            // For writing stdout to a file
+            // SIZE, NBODIES, RTIME, GLOPS
+            // NOTE: In the root project directory, .PRUN_ENVIRONMENT* file
+            // is created and could be used to access the args to `prun`
+            char *prun_env_fname = get_prun_environment_fname();
+            printf("%s\n", prun_env_fname);
+            printf("%d,%d,%.3f,%.2f\n", size, world->bodyCt, rtime, gflops);
         }
     }
 
