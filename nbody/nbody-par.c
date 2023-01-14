@@ -22,12 +22,10 @@ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 1
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
-#include <sys/types.h>
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <dirent.h>
-#include <regex.h>
 #include <mpi.h>
 
 /* Constants
@@ -370,18 +368,9 @@ compute_positions(struct world *world, int lower_bound, int upper_bound)
 /// [Get Files in Dir](https://www.tutorialspoint.com/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-cplusplus)
 /// [C Regex](https://stackoverflow.com/questions/1085083/regular-expressions-in-c-examples)
 char* get_prun_environment_fname(){
-    regex_t regex;
-    int reti;
     bool match = false;
     char *fname;
     char msgbuf[100];
-
-    /* Compile regular expression */
-    reti = regcomp(&regex, ".PRUN_ENVIRONMENT*", 0);
-    if (reti) {
-        fprintf(stderr, "Could not compile regex\n");
-        exit(1);
-    } 
     
     // get lists of directories
     DIR *dr;
@@ -390,26 +379,14 @@ char* get_prun_environment_fname(){
     if (dr) {
         en = readdir(dr);
         while (en != NULL && !match){
-             /* Execute regular expression */
-            reti = regexec(&regex, en->d_name, 0, NULL, 0);
-            if (!reti) {
+            fname = en->d_name;
+            if (strstr(fname, ".PRUN_ENVIRONMENT") != NULL){
                 match = true;
-                fname = en->d_name;
             }
-            else if (reti == REG_NOMATCH) {
-                //puts("No match");
-            }
-            else {
-                regerror(reti, &regex, msgbuf, sizeof(msgbuf));
-                fprintf(stderr, "Regex match failed: %s\n", msgbuf);
-                exit(1);
-            }
-
             en = readdir(dr);
         }
         close(dr);
     }
-    regfree(&regex);
     return fname;
 }
 
