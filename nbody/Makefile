@@ -8,8 +8,8 @@ nbody-seq: nbody-seq.c
 	gcc $(CFLAGS) -o nbody-seq nbody-seq.c -lm
 
 nbody-par: nbody-par.c
-	# mpicc $(CFLAGS) -o nbody-par nbody-par.c -lm
-	mpicc -o nbody-par nbody-par.c -lm
+	mpicc $(CFLAGS) -o nbody-par nbody-par.c -lm
+	# mpicc -o nbody-par nbody-par.c -lm
 
 nbody-seq-test: nbody-seq-test.c 
 	gcc -o nbody-seq-test nbody-seq-test.c -lm -g

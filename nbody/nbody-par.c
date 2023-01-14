@@ -9,7 +9,7 @@ Example Cmd:
 $ # Requires `module load openmpi/gcc`
 $ # Expects the same args as the serial script... though add an additional arg for func to print
 $ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 8 0 nbody.ppm 1000
-prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 4 0 nbody.ppm 1
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000
 
 Notes:
 * What data needs to be scattered?
@@ -281,26 +281,34 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
 
 /// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
-void suboptimal_positions_bcast(
+void suboptimal_allgather(
     struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank) {
 
     // Dynamically allocate an array of structs
     struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
-    //struct bodyType gathered_bodies[MAXBODIES];
 
     // Gather and then broadcast the data
+    // TODO: Need to modify the receive to be information about what the subsequent
+    // process is sending
     MPI_Gather(
         &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
         gathered_bodies, upper_bound-lower_bound, BODY_TYPE, 0, comm);
     MPI_Bcast(gathered_bodies, world->bodyCt, BODY_TYPE, 0, comm);
 
-    // Copy the positions data from the array of structs into the local world data
+    // Copy the data from the array of bodies into the local world data
     for (int b = 0; b < world->bodyCt; b++) {
-        XN(world, b) = gathered_bodies[b].x[world->old^1]; // assign most recent XN
-        YN(world, b) = gathered_bodies[b].y[world->old^1]; // assign most recent YN
-        XV(world, b) = gathered_bodies[b].xv; // are these necessary?? is my gathering function wrong???
+        // Get body positions -- needed for force calculations
+        XN(world, b) = gathered_bodies[b].x[world->old^1]; 
+        YN(world, b) = gathered_bodies[b].y[world->old^1];
+
+        // information that is not used by other bodies, but prevents the need
+        // for gather operation later
+        XF(world, b) = gathered_bodies[b].xf; 
+        YF(world, b) = gathered_bodies[b].yf;
+        XV(world, b) = gathered_bodies[b].xv; 
         YV(world, b) = gathered_bodies[b].yv; 
     }
+    MPI_Barrier(comm);
 
     // Free the array of structs and set it to null
     free(gathered_bodies);
@@ -349,7 +357,8 @@ compute_forces(struct world *world, int lower_bound, int upper_bound)
     // wait for the positions to available from the other processes
     // when c+1 == upperbound
     for (int b = lower_bound; b < upper_bound; ++b) {
-        for (int c = b + 1; c < world->bodyCt; ++c) {
+        for (int c = 0; c < world->bodyCt; ++c) {
+            if (b == c) continue; 
             double dx = X(world, c) - X(world, b);
             double dy = Y(world, c) - Y(world, b);
             double angle = atan2(dy, dx);
@@ -815,15 +824,11 @@ int main(int argc, char **argv)
     // iteration two, there appears to be a problem
     for (int step = 0; step < steps; step++) {
         clear_forces(world);
-
-        // Force updates are local and then local forces are summed across processes
         compute_forces(world, lower_bound, upper_bound);
-        // MPI_Allreduce(MPI_IN_PLACE, world, 1, WORLD_TYPE, SUM_FORCES, comm); 
-
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
 
-        suboptimal_positions_bcast(world, lower_bound, upper_bound, comm, rank);
+        suboptimal_allgather(world, lower_bound, upper_bound, comm, rank);
 
         world->old ^= 1;
     }
@@ -838,24 +843,25 @@ int main(int argc, char **argv)
     * NAIVE Post-processing
     *****************/
 
-    // // Gather results (memory inefficient for now)
-    struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
-    struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
+    // // // Gather results (memory inefficient for now)
+    // struct bodyType gathered_bodies[MAXBODIES]; // could malloc this... 
+    // struct world *gathered_world  = calloc(1, sizeof(*gathered_world));
 
-    // naive first
-    MPI_Gather(
-        &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
-        gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
-        0, comm);
+    // // naive first
+    // MPI_Gather(
+    //     &world->bodies[lower_bound],  upper_bound-lower_bound, BODY_TYPE,
+    //     gathered_bodies, upper_bound-lower_bound, BODY_TYPE,
+    //     0, comm);
 
-    gathered_world->bodyCt = world->bodyCt;
-    for (int b = 0; b < gathered_world->bodyCt; b++) {
-        gathered_world->bodies[b] = gathered_bodies[b];
-    }
+    // gathered_world->bodyCt = world->bodyCt;
+    // for (int b = 0; b < gathered_world->bodyCt; b++) {
+    //     gathered_world->bodies[b] = gathered_bodies[b];
+    // }
 
     // Print results
     if (rank == 0) {
-        print(gathered_world);
+        //print(gathered_world);
+        print(world);
         fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
     }
 
