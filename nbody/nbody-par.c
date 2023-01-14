@@ -426,35 +426,49 @@ char* get_prun_environment_fname(){
 /// [Cpp Reference: fgets](https://en.cppreference.com/w/c/io/fgets)
 /// [Geeks for geeks: atoi](https://www.geeksforgeeks.org/c-program-for-char-to-int-conversion/)
 /// [Stack Overflow: subsrings](https://stackoverflow.com/questions/12784766/check-substring-exists-in-a-string-in-c)
-int* get_prun_compute_args(char *prun_env_fname, int arg_array[]){
-    fprintf(stderr, "getting prun compute args\n"); 
-    fprintf(stderr, "fname: %s\n", prun_env_fname) ;
+int* get_prun_compute_args(char *prun_env_fname, int *arg_array){
     int foundargs = 0;
     int argstrlen;
     char buffer[1000];
+    int buffer_len;
+    char compute_arg[256];
+    int compute_arg_ix;
 
     // open prun file
     FILE *fptr = fopen(prun_env_fname, "r");
-    fprintf(stderr, "opened file\n");
+
+    // While the two compute args of interest have not been found
+    // or until the whole file hsa been read
     while(foundargs < 2 && fgets(buffer, sizeof(buffer), fptr) != NULL) {
-        fprintf("reading data: %s\n", buffer);
+
+        // Check to see if the substrings of interest match...
+        // then use the buffer length information to populate the
+        // actual integer argument
+        buffer_len = strlen(buffer);
         if (strstr(buffer, "PRUN_CPUS=") != NULL) {
-            argstrlen = strlen("PRUN_CPUS="); // can i just strlen - 1 instead on buffer?
-            arg_array[0] = atoi(buffer[argstrlen]);
+            argstrlen = strlen("PRUN_CPUS=");
+            compute_arg_ix = 0;
+            for (int c = argstrlen; c < buffer_len; c++) {
+                compute_arg[compute_arg_ix] = buffer[c];
+                compute_arg_ix++;
+            }
+            arg_array[0] = atoi(compute_arg);
             foundargs++;
-            fprintf(stderr, "matched PRUN_CUPS=\n");
+
         } else if(strstr(buffer,"PRUN_CPUS_PER_NODE=") != NULL) {
             argstrlen = strlen("PRUN_CPUS_PER_NODE=");
-            arg_array[1] = atoi(buffer[argstrlen]);
+            compute_arg_ix = 0;
+            for (int c = argstrlen; c < buffer_len; c++) {
+                compute_arg[compute_arg_ix] = buffer[c];
+                compute_arg_ix++;
+            }
+            arg_array[1] = atoi(compute_arg);
             foundargs++;
-            fprintf(stderr, "matched PRUN_CUPS_PER_NODE=\n");
         }
     }
 
     // close file
     fclose(fptr);
-    fprintf(stderr, "returning prun compute args\n"); 
-    return arg_array;
 }
 
 /*  Graphic output stuff...
