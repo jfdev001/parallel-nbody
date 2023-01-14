@@ -420,6 +420,43 @@ char* get_prun_environment_fname(){
     return fname;
 }
 
+/// @brief Return an array s.t. `array = {n_nodes, n_cpus_per_node}`
+/// @details 
+/// Effective C, Ch. 8
+/// [Cpp Reference: fgets](https://en.cppreference.com/w/c/io/fgets)
+/// [Geeks for geeks: atoi](https://www.geeksforgeeks.org/c-program-for-char-to-int-conversion/)
+/// [Stack Overflow: subsrings](https://stackoverflow.com/questions/12784766/check-substring-exists-in-a-string-in-c)
+int* get_prun_compute_args(char *prun_env_fname, int arg_array[]){
+    fprintf(stderr, "getting prun compute args\n"); 
+    fprintf(stderr, "fname: %s\n", prun_env_fname) ;
+    int foundargs = 0;
+    int argstrlen;
+    char buffer[1000];
+
+    // open prun file
+    FILE *fptr = fopen(prun_env_fname, "r");
+    fprintf(stderr, "opened file\n");
+    while(foundargs < 2 && fgets(buffer, sizeof(buffer), fptr) != NULL) {
+        fprintf("reading data: %s\n", buffer);
+        if (strstr(buffer, "PRUN_CPUS=") != NULL) {
+            argstrlen = strlen("PRUN_CPUS="); // can i just strlen - 1 instead on buffer?
+            arg_array[0] = atoi(buffer[argstrlen]);
+            foundargs++;
+            fprintf(stderr, "matched PRUN_CUPS=\n");
+        } else if(strstr(buffer,"PRUN_CPUS_PER_NODE=") != NULL) {
+            argstrlen = strlen("PRUN_CPUS_PER_NODE=");
+            arg_array[1] = atoi(buffer[argstrlen]);
+            foundargs++;
+            fprintf(stderr, "matched PRUN_CUPS_PER_NODE=\n");
+        }
+    }
+
+    // close file
+    fclose(fptr);
+    fprintf(stderr, "returning prun compute args\n"); 
+    return arg_array;
+}
+
 /*  Graphic output stuff...
  */
 
@@ -696,6 +733,7 @@ int main(int argc, char **argv)
     double gflops;
     struct filemap image_map;          // for graphics
     bool running_experiments = false;  // for logging results of experiments
+    int prun_compute_args[2];
     
     // Allocate nbody world
     struct world *world = calloc(1, sizeof *world);
@@ -747,6 +785,13 @@ int main(int argc, char **argv)
     // Print meta information to stderr
     if (rank == 0) {
         fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
+    }
+
+    // Gets information needed about processes
+    if (running_experiments && rank == 0) {
+        // For writing stdout to a file
+        char *prun_env_fname = get_prun_environment_fname();
+        get_prun_compute_args(prun_env_fname, prun_compute_args);
     }
 
     // Initialize nbody world and then bcast it 
@@ -804,13 +849,10 @@ int main(int argc, char **argv)
             fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
             fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", gflops);
         } else {
-            // For writing stdout to a file
-            // SIZE, NBODIES, RTIME, GLOPS
-            // NOTE: In the root project directory, .PRUN_ENVIRONMENT* file
-            // is created and could be used to access the args to `prun`
-            char *prun_env_fname = get_prun_environment_fname();
-            printf("%s\n", prun_env_fname);
-            printf("%d,%d,%.3f,%.2f\n", size, world->bodyCt, rtime, gflops);
+            // NODES, CPUS_PER_NODE, NBODIES, RTIME, GLOPS
+            printf(
+                "%d,%d,%d,%.3f,%.2f\n", 
+                prun_compute_args[0], prun_compute_args[1], world->bodyCt, rtime, gflops);
         }
     }
 
