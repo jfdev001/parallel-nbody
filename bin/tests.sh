@@ -20,11 +20,8 @@ DIFF_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.diff
 
 echo "Running Tests: NP=$NP CPU_PER_PROC=$CPU_PER_PROC N_BODIES=$N_BODIES"
 
-# Compute sequential outputs if none available
-if test ! -f $REFERENCE_OUTPUT_FILE;
-then
-    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq $N_BODIES 0 nbody.ppm 1000 | tee $REFERENCE_OUTPUT_FILE
-fi
+# Always compute sequential outputs
+prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq $N_BODIES 0 nbody.ppm 1000 | tee $REFERENCE_OUTPUT_FILE
 
 # Get outputs of parallel program
 prun -v -$CPU_PER_PROC -np $NP -sge-script $PRUN_ETC/prun-openmpi nbody/nbody-par $N_BODIES 0 nbody.ppm 1000 2> $ERROR_FILE | tee $OUTPUT_FILE
