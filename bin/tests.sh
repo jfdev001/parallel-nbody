@@ -18,6 +18,8 @@ OUTPUT_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.out
 ERROR_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.err
 DIFF_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.diff
 
+echo "Running Tests: NP=$NP CPU_PER_PROC=$CPU_PER_PROC N_BODIES=$N_BODIES"
+
 # Compute sequential outputs if none available
 if test ! -f $REFERENCE_OUTPUT_FILE;
 then
@@ -34,6 +36,9 @@ diff $REFERENCE_OUTPUT_FILE $OUTPUT_FILE
 if test -s $DIFF_FILE;
 then 
     echo "Status=FAILED" >> $OUTPUT_FILE
+    echo "Status=FAILED" 
 else 
-    echo "STATUS=PASSED" >> $OUTPUT_FILE;
+    echo "STATUS=PASSED" >> $OUTPUT_FILE
+    echo "STATUS=PASSED"
 fi 
+
