@@ -1,1 +1,7 @@
-./bin/tests.sh: line 30: prun: command not found
+Reservation number 3909942: Reserved 2 hosts for 900 seconds 
+Run on 2 hosts for 960 seconds from Sun Jan 15 18:38:57 2023
+: node056/0 node057/0 
+Running N-body with 32 bodies and 1000 steps
+
+N-body took: 0.084 seconds
+Performance N-body: 0.13 GFLOPS
