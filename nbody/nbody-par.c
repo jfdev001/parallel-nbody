@@ -220,18 +220,19 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
 
 /// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
 void suboptimal_allgather(
-    struct world *world, int lower_bound, int upper_bound, MPI_Comm comm, int rank,
-    struct bodyType *gathered_bodies) {
+    struct world *world, 
+    int lower_bound, int upper_bound, 
+    MPI_Comm comm, int rank,
+    struct bodyType *gathered_bodies,
+    int *recvcounts, int *displacements) {
 
-    // Gather and then broadcast the data
-    // TODO: Need to modify the receive to be information about what the subsequent
-    // process is sending
-    MPI_Gather(
+    // Get the bodies and their info
+    // TODO: Could optimize this with an MPI_IN_PLACE operation
+    MPI_Allgatherv(
         &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
-        gathered_bodies, upper_bound-lower_bound, BODY_TYPE, 0, comm);
+        gathered_bodies, recvcounts, displacements,
+        BODY_TYPE, comm);
         
-    MPI_Bcast(gathered_bodies, world->bodyCt, BODY_TYPE, 0, comm);
-
     // Copy the data from the array of bodies into the local world data
     for (int b = 0; b < world->bodyCt; b++) {
         // Get body positions -- needed for force calculations
@@ -426,7 +427,7 @@ char* get_prun_environment_fname(){
             }
             en = readdir(dr);
         }
-        close(dr);
+        closedir(dr);
     }
     return fname;
 }
@@ -860,7 +861,11 @@ int main(int argc, char **argv)
         compute_positions(world, lower_bound, upper_bound);
 
         // Allgather of bodies (includes position information needed for compute forces)
-        suboptimal_allgather(world, lower_bound, upper_bound, comm, rank, gathered_bodies);
+        suboptimal_allgather(
+            world, lower_bound, upper_bound, 
+            comm, rank, 
+            gathered_bodies,
+            recvcounts, displacements);
 
         world->old ^= 1;
     }
