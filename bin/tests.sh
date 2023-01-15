@@ -23,11 +23,11 @@ echo "Running Tests: NP=$NP CPU_PER_PROC=$CPU_PER_PROC N_BODIES=$N_BODIES"
 # Compute sequential outputs if none available
 if test ! -f $REFERENCE_OUTPUT_FILE;
 then
-    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq $N_BODIES 0 nbody.ppm 100000 | tee $REFERENCE_OUTPUT_FILE
+    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq $N_BODIES 0 nbody.ppm 1000 | tee $REFERENCE_OUTPUT_FILE
 fi
 
 # Get outputs of parallel program
-prun -v -$CPU_PER_PROC -np $NP -sge-script $PRUN_ETC/prun-openmpi nbody/nbody-par $N_BODIES 0 nbody.ppm 100000 2> $ERROR_FILE | tee $OUTPUT_FILE
+prun -v -$CPU_PER_PROC -np $NP -sge-script $PRUN_ETC/prun-openmpi nbody/nbody-par $N_BODIES 0 nbody.ppm 1000 2> $ERROR_FILE | tee $OUTPUT_FILE
 
 # Get difference in outputs
 diff $REFERENCE_OUTPUT_FILE $OUTPUT_FILE

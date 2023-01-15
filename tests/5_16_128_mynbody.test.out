@@ -1,0 +1,7 @@
+[node059:31040] *** An error occurred in MPI_Gather
+[node059:31040] *** reported by process [1168703489,0]
+[node059:31040] *** on communicator MPI_COMM_WORLD
+[node059:31040] *** MPI_ERR_TRUNCATE: message truncated
+[node059:31040] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[node059:31040] ***    and potentially your MPI job)
+STATUS=PASSED

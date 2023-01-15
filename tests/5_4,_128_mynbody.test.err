@@ -1,0 +1,5 @@
+Reservation number 3909810: Reserved 5 hosts for 900 seconds 
+Run on 5 hosts for 960 seconds from Sun Jan 15 15:36:28 2023
+: node059/0 node059/1 node059/2 node059/3 node060/0 node060/1 node060/2 node060/3 node061/0 node061/1 node061/2 node061/3 node062/0 node062/1 node062/2 node062/3 node063/0 node063/1 node063/2 node063/3 
+Running N-body with 128 bodies and 1000 steps
+Killed by signal 2.
