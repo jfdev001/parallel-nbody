@@ -1,7 +1,7 @@
-Reservation number 3909829: Reserved 8 hosts for 900 seconds 
-Run on 8 hosts for 960 seconds from Sun Jan 15 15:39:01 2023
-: node058/0 node059/0 node060/0 node061/0 node062/0 node063/0 node064/0 node065/0 
+Reservation number 3909993: Reserved 8 hosts for 900 seconds 
+Run on 8 hosts for 960 seconds from Sun Jan 15 18:57:10 2023
+: node056/0 node057/0 node058/0 node059/0 node060/0 node061/0 node062/0 node063/0 
 Running N-body with 128 bodies and 1000 steps
 
-N-body took: 0.385 seconds
-Performance N-body: 0.43 GFLOPS
+N-body took: 0.415 seconds
+Performance N-body: 0.40 GFLOPS

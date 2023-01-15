@@ -1,4 +1,7 @@
-Reservation number 3909812: Reserved 5 hosts for 900 seconds 
-Run on 5 hosts for 960 seconds from Sun Jan 15 15:37:12 2023
-: node059/0 node059/1 node059/2 node059/3 node059/4 node059/5 node059/6 node059/7 node059/8 node059/9 node059/10 node059/11 node059/12 node059/13 node059/14 node059/15 node060/0 node060/1 node060/2 node060/3 node060/4 node060/5 node060/6 node060/7 node060/8 node060/9 node060/10 node060/11 node060/12 node060/13 node060/14 node060/15 node061/0 node061/1 node061/2 node061/3 node061/4 node061/5 node061/6 node061/7 node061/8 node061/9 node061/10 node061/11 node061/12 node061/13 node061/14 node061/15 node062/0 node062/1 node062/2 node062/3 node062/4 node062/5 node062/6 node062/7 node062/8 node062/9 node062/10 node062/11 node062/12 node062/13 node062/14 node062/15 node063/0 node063/1 node063/2 node063/3 node063/4 node063/5 node063/6 node063/7 node063/8 node063/9 node063/10 node063/11 node063/12 node063/13 node063/14 node063/15 
+Reservation number 3909979: Reserved 5 hosts for 900 seconds 
+Run on 5 hosts for 960 seconds from Sun Jan 15 18:56:05 2023
+: node056/0 node056/1 node056/2 node056/3 node056/4 node056/5 node056/6 node056/7 node056/8 node056/9 node056/10 node056/11 node056/12 node056/13 node056/14 node056/15 node057/0 node057/1 node057/2 node057/3 node057/4 node057/5 node057/6 node057/7 node057/8 node057/9 node057/10 node057/11 node057/12 node057/13 node057/14 node057/15 node058/0 node058/1 node058/2 node058/3 node058/4 node058/5 node058/6 node058/7 node058/8 node058/9 node058/10 node058/11 node058/12 node058/13 node058/14 node058/15 node059/0 node059/1 node059/2 node059/3 node059/4 node059/5 node059/6 node059/7 node059/8 node059/9 node059/10 node059/11 node059/12 node059/13 node059/14 node059/15 node060/0 node060/1 node060/2 node060/3 node060/4 node060/5 node060/6 node060/7 node060/8 node060/9 node060/10 node060/11 node060/12 node060/13 node060/14 node060/15 
 Running N-body with 128 bodies and 1000 steps
+
+N-body took: 1.083 seconds
+Performance N-body: 0.15 GFLOPS

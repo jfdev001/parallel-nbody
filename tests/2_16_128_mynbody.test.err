@@ -1,7 +1,7 @@
-Reservation number 3909794: Reserved 2 hosts for 900 seconds 
-Run on 2 hosts for 960 seconds from Sun Jan 15 15:34:14 2023
-: node059/0 node059/1 node059/2 node059/3 node059/4 node059/5 node059/6 node059/7 node059/8 node059/9 node059/10 node059/11 node059/12 node059/13 node059/14 node059/15 node060/0 node060/1 node060/2 node060/3 node060/4 node060/5 node060/6 node060/7 node060/8 node060/9 node060/10 node060/11 node060/12 node060/13 node060/14 node060/15 
+Reservation number 3909961: Reserved 2 hosts for 900 seconds 
+Run on 2 hosts for 960 seconds from Sun Jan 15 18:54:47 2023
+: node056/0 node056/1 node056/2 node056/3 node056/4 node056/5 node056/6 node056/7 node056/8 node056/9 node056/10 node056/11 node056/12 node056/13 node056/14 node056/15 node057/0 node057/1 node057/2 node057/3 node057/4 node057/5 node057/6 node057/7 node057/8 node057/9 node057/10 node057/11 node057/12 node057/13 node057/14 node057/15 
 Running N-body with 128 bodies and 1000 steps
 
-N-body took: 0.201 seconds
-Performance N-body: 0.82 GFLOPS
+N-body took: 0.601 seconds
+Performance N-body: 0.28 GFLOPS
