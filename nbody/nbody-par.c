@@ -791,11 +791,15 @@ int main(int argc, char **argv)
     struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
 
     // Determine bounds for computation
+    // TODO: This should be dedicated to it's own function and use some of round robin
+    // load balancing technique... e.g., for N = 128, NP = 7 and CPU/P = 16, then 
+    // size = 112.
     int lower_bound, upper_bound;
     int N = world->bodyCt;
     int P = size;
     lower_bound = rank*N/P;
-    upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // naive index soln
+    upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // this will fail, e.g.,
+                                                                   // N=128, P=112
 
 
 
