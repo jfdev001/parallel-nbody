@@ -270,6 +270,47 @@ initialize_simulation_data(struct world *world)
     return;
 }
 
+/// @brief Modify array of receive counts using N bodies and P ranks.
+void get_recvcounts(int *recvcounts, int N, int P) {
+    // Get initial receive counts
+    for (int rank = 0; rank < P; rank++) {
+        recvcounts[rank] = N/P;
+    }
+
+    // Load balance
+    for (int rank = N%P; rank > 0; rank--){
+        recvcounts[rank] += 1;
+    }
+    
+    return;
+}
+
+/// @brief Modify displacements to get offsets using receive counts.
+void get_displacements(
+    int *displacements, int *recvcounts, int P) {
+    // First displacement is always 0
+    displacements[0] = 0;
+
+    for (int rank = 1; rank < P; rank++) {
+        displacements[rank] = displacements[rank-1] + recvcounts[rank-1];
+    }
+
+    return;
+}
+
+/// @brief Modify lower and upper bound arrays to determine nbody indices
+void get_bounds(
+    int *lower_bounds, int *upper_bounds, 
+    int *displacements, int *recvcounts,
+    int P) {
+    for (int rank = 0; rank < P; rank++) {
+        lower_bounds[rank] = displacements[rank];
+        upper_bounds[rank] = displacements[rank] + recvcounts[rank];
+    }
+    
+    return;
+}
+
 /* N-body updates
 */
 
