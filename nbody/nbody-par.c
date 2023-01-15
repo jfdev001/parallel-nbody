@@ -752,18 +752,25 @@ int main(int argc, char **argv)
     // Build MPI type for the N-body
     build_mpi_body_type();
 
-    // Measurement variables
     unsigned int lastup = 0;
     unsigned int secsup;
     int steps;                         // number of timesteps
     double start;
     double stop;
-    double rtime;
-    double gflops;
+    double rtime;                      // run time of simulation
+    double gflops;                     // floating pt ops
     struct filemap image_map;          // for graphics
+
     bool running_experiments = false;  // for logging results of experiments
-    int prun_compute_args[2];
-    
+    int prun_compute_args[2];          // for -np <> and -<> args from PRUN_ENVIRONMENT
+
+    int *displacements = NULL;
+    int *recvcounts = NULL;
+    int *lower_bounds = NULL;
+    int *upper_bounds = NULL;
+    int lower_bound;
+    int upper_bound;
+
     // Allocate nbody world
     struct world *world = calloc(1, sizeof *world);
     if (world == NULL) {
@@ -816,33 +823,25 @@ int main(int argc, char **argv)
         fprintf(stderr, "Running N-body with %i bodies and %i steps\n", world->bodyCt, steps);
     }
 
-    // Gets information needed about processes for printing experimental info
-    if (running_experiments && rank == 0) {
-
-        // For writing stdout to a file
-        char *prun_env_fname = get_prun_environment_fname();
-        get_prun_compute_args(prun_env_fname, prun_compute_args);
-    }
-    MPI_Barrier(comm); // make sure root catches up to this 
-
     // Initialize nbody world and then bcast it 
+    // TODO: bcast this
     initialize_simulation_data(world);
 
     // Needed for gathering positions later
     struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
 
     // Determine bounds for computation
-    // TODO: This should be dedicated to it's own function and use some of round robin
-    // load balancing technique... e.g., for N = 128, NP = 7 and CPU/P = 16, then 
-    // size = 112.
-    int lower_bound, upper_bound;
-    int N = world->bodyCt;
-    int P = size;
-    lower_bound = rank*N/P;
-    upper_bound = rank == P-1 ? (rank+1)*N/P + N%P : (rank+1)*N/P; // this will fail, e.g.,
-                                                                   // N=128, P=112
+    recvcounts = malloc(size * sizeof(int));
+    displacements = malloc(size * sizeof(int));
+    lower_bounds = malloc(size * sizeof(int));
+    upper_bounds = malloc(size * sizeof(int));
 
+    get_recvcounts(recvcounts, world->bodyCt, size);
+    get_displacements(displacements, recvcounts, size);
+    get_bounds(lower_bounds, upper_bounds, displacements, recvcounts, size);
 
+    lower_bound = lower_bounds[rank];
+    upper_bound = upper_bounds[rank];
 
     /****************
     * Main processing
@@ -889,6 +888,10 @@ int main(int argc, char **argv)
             fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
             fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", gflops);
         } else {
+            // For writing stdout to a file
+            char *prun_env_fname = get_prun_environment_fname();
+            get_prun_compute_args(prun_env_fname, prun_compute_args);
+
             // NODES, CPUS_PER_NODE, NBODIES, RTIME, GLOPS
             printf(
                 "%d,%d,%d,%.3f,%.2f\n", 
@@ -898,9 +901,12 @@ int main(int argc, char **argv)
 
     // Cleanup
     MPI_Type_free(&BODY_TYPE);
+
     free(gathered_bodies);
     gathered_bodies = NULL;
+
     free(world);
     world = NULL;
+
     MPI_Finalize();
 }
