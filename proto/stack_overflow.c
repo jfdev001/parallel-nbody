@@ -58,16 +58,19 @@ int main(int argc, char **argv){
     // GATHER
     int gathered_array[MAX_ELES];
     MPI_Allgatherv(
-        &array[lower_bound], upper_bound-lower_bound, MPI_INT,
-        // MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-        gathered_array, recvcounts, displs, MPI_INT, comm);
+        // &array[lower_bound], upper_bound-lower_bound, MPI_INT,
+        MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+        //gathered_array, 
+        array,
+        recvcounts, displs, MPI_INT, comm);
 
     // inspect gathered array on only one process, though it 
     // it present on all processes
-    if (rank == 0) {
+    if (1) {
         printf("---------\n");
         printf("RANK %d: Gathered\n", rank);
-        print_arr(gathered_array, rank);
+        //print_arr(gathered_array, rank);
+        print_arr(array, rank);
         printf("---------\n");
     }
 
