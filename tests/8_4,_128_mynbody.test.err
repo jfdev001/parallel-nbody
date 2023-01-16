@@ -1,7 +1,8 @@
-Reservation number 3909995: Reserved 8 hosts for 900 seconds 
-Run on 8 hosts for 960 seconds from Sun Jan 15 18:57:18 2023
-: node056/0 node056/1 node056/2 node056/3 node057/0 node057/1 node057/2 node057/3 node058/0 node058/1 node058/2 node058/3 node059/0 node059/1 node059/2 node059/3 node060/0 node060/1 node060/2 node060/3 node061/0 node061/1 node061/2 node061/3 node062/0 node062/1 node062/2 node062/3 node063/0 node063/1 node063/2 node063/3 
+Reservation number 3910639: Reserved 8 hosts for 900 seconds 
+Run on 8 hosts for 960 seconds from Mon Jan 16 15:06:51 2023
+: node009/0 node009/1 node009/2 node009/3 node010/0 node010/1 node010/2 node010/3 node011/0 node011/1 node011/2 node011/3 node053/0 node053/1 node053/2 node053/3 node054/0 node054/1 node054/2 node054/3 node055/0 node055/1 node055/2 node055/3 node057/0 node057/1 node057/2 node057/3 node058/0 node058/1 node058/2 node058/3 
+Warning: Permanently added 'node009,10.141.0.9' (ECDSA) to the list of known hosts.
 Running N-body with 128 bodies and 1000 steps
 
-N-body took: 0.431 seconds
+N-body took: 0.432 seconds
 Performance N-body: 0.38 GFLOPS

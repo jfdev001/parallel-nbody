@@ -13,7 +13,7 @@ CPU_PER_PROC=$2
 N_BODIES=$3
 
 # Name files based on args
-REFERENCE_OUTPUT_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_MY_REF_OUTPUT
+REFERENCE_OUTPUT_FILE=tests/${N_BODIES}_MY_REF_OUTPUT
 OUTPUT_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.out
 ERROR_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.err
 DIFF_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.diff
@@ -21,7 +21,10 @@ DIFF_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.diff
 echo "Running Tests: NP=$NP CPU_PER_PROC=$CPU_PER_PROC N_BODIES=$N_BODIES"
 
 # Always compute sequential outputs
-prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq $N_BODIES 0 nbody.ppm 1000 | tee $REFERENCE_OUTPUT_FILE
+if ! test -f $REFERENCE_OUTPUT_FILE
+then 
+    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq $N_BODIES 0 nbody.ppm 1000 | tee $REFERENCE_OUTPUT_FILE
+fi
 
 # Get outputs of parallel program
 prun -v -$CPU_PER_PROC -np $NP -sge-script $PRUN_ETC/prun-openmpi nbody/nbody-par $N_BODIES 0 nbody.ppm 1000 2> $ERROR_FILE | tee $OUTPUT_FILE

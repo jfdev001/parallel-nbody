@@ -1,7 +1,8 @@
-Reservation number 3909987: Reserved 7 hosts for 900 seconds 
-Run on 7 hosts for 960 seconds from Sun Jan 15 18:56:41 2023
-: node056/0 node057/0 node058/0 node059/0 node060/0 node061/0 node062/0 
+Reservation number 3910635: Reserved 7 hosts for 900 seconds 
+Run on 7 hosts for 960 seconds from Mon Jan 16 15:06:32 2023
+: node021/0 node043/0 node054/0 node055/0 node057/0 node058/0 node065/0 
+Warning: Permanently added 'node021,10.141.0.21' (ECDSA) to the list of known hosts.
 Running N-body with 128 bodies and 1000 steps
 
-N-body took: 0.485 seconds
-Performance N-body: 0.34 GFLOPS
+N-body took: 0.495 seconds
+Performance N-body: 0.33 GFLOPS

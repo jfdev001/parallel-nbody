@@ -217,40 +217,6 @@ void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
     return;
 }
 
-
-/// @brief Gather(bodies) --> Bcast(bodies) --> Copy(world.bodies.positions, bodies.positions)
-void suboptimal_allgather(
-    struct world *world, 
-    int lower_bound, int upper_bound, 
-    MPI_Comm comm, int rank,
-    struct bodyType *gathered_bodies,
-    int *recvcounts, int *displacements) {
-
-    // Get the bodies and their info
-    // TODO: Could optimize this with an MPI_IN_PLACE operation
-    MPI_Allgatherv(
-        &world->bodies[lower_bound], upper_bound-lower_bound, BODY_TYPE,
-        gathered_bodies, recvcounts, displacements,
-        BODY_TYPE, comm);
-        
-    // Copy the data from the array of bodies into the local world data
-    for (int b = 0; b < world->bodyCt; b++) {
-        // Get body positions -- needed for force calculations
-        XN(world, b) = gathered_bodies[b].x[world->old^1]; 
-        YN(world, b) = gathered_bodies[b].y[world->old^1];
-
-        // information that is not used by other bodies, but prevents the need
-        // for gather operation later
-        XF(world, b) = gathered_bodies[b].xf; 
-        YF(world, b) = gathered_bodies[b].yf;
-        XV(world, b) = gathered_bodies[b].xv; 
-        YV(world, b) = gathered_bodies[b].yv; 
-    }
-
-    return;
-}
-
-
 /* Preprocessing
 */
 
@@ -828,9 +794,6 @@ int main(int argc, char **argv)
     // TODO: bcast this
     initialize_simulation_data(world);
 
-    // Needed for gathering positions later
-    struct bodyType *gathered_bodies = malloc(world->bodyCt * sizeof(*gathered_bodies)); 
-
     // Determine bounds for computation
     recvcounts = malloc(size * sizeof(int));
     displacements = malloc(size * sizeof(int));
@@ -860,12 +823,13 @@ int main(int argc, char **argv)
         compute_velocities(world, lower_bound, upper_bound);
         compute_positions(world, lower_bound, upper_bound);
 
-        // Allgather of bodies (includes position information needed for compute forces)
-        suboptimal_allgather(
-            world, lower_bound, upper_bound, 
-            comm, rank, 
-            gathered_bodies,
-            recvcounts, displacements);
+        // Gathers different bodies in partitions...
+        // needed to get position information
+        MPI_Allgatherv(
+            MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+            world->bodies,
+            recvcounts, displacements,
+            BODY_TYPE, comm);
 
         world->old ^= 1;
     }
@@ -897,21 +861,27 @@ int main(int argc, char **argv)
             char *prun_env_fname = get_prun_environment_fname();
             get_prun_compute_args(prun_env_fname, prun_compute_args);
 
-            // NODES, CPUS_PER_NODE, NBODIES, RTIME, GLOPS
+            // SIZE, NODES, CPUS_PER_NODE, NBODIES, RTIME, GLOPS
             printf(
-                "%d,%d,%d,%.3f,%.2f\n", 
-                prun_compute_args[0], prun_compute_args[1], world->bodyCt, rtime, gflops);
+                "%d,%d,%d,%d,%.3f,%.2f\n", 
+                size, prun_compute_args[0], prun_compute_args[1], world->bodyCt, rtime, gflops);
         }
     }
 
     // Cleanup
     MPI_Type_free(&BODY_TYPE);
 
-    free(gathered_bodies);
-    gathered_bodies = NULL;
-
     free(world);
     world = NULL;
+
+    free(displacements);
+    displacements = NULL;
+    free(recvcounts);
+    recvcounts = NULL;
+    free(lower_bounds);
+    lower_bounds = NULL;
+    free(upper_bounds);
+    upper_bounds = NULL;
 
     MPI_Finalize();
 }
