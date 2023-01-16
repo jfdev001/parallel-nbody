@@ -87,8 +87,7 @@ static void print(struct world *world);
 /* MPI types and op
 */
 MPI_Datatype BODY_TYPE;
-MPI_Datatype WORLD_TYPE; // not used
-MPI_Op SUM_FORCES;       // not used
+MPI_Datatype WORLD_TYPE; 
 
 /// @brief Build the MPI datatype for `struct bodyType`
 /// @details 
@@ -156,7 +155,7 @@ build_mpi_body_type()
     return;
 }
 
-/// @brief (NOT USED!) Build the MPI datatype for `struct world`
+/// @brief Build the MPI datatype for `struct world`
 static void 
 build_mpi_world_type() 
 {
@@ -192,32 +191,6 @@ build_mpi_world_type()
         &WORLD_TYPE);
 
     MPI_Type_commit(&WORLD_TYPE);
-}
-
-/* MPI Funcs
-*/
-
-/// @brief (NOT USED!) Sums X and Y forces of a bodies array
-/// @details Must match the MPI_User_function parameters
-/// see [Open-mpi docs: MPI_Op_create](https://www.open-mpi.org/doc/v3.0/man3/MPI_Op_create.3.php)
-/// The ref @ [Github: Ch. 8 of Manning Parallel and HPC, 2021](https://github.com/essentialsofparallelcomputing/Chapter8/blob/12f16453c4995b6090192d97cc128d798ff435de/GlobalSums/globalsums.c])
-/// appears to directly use the struct pointer type
-/// [Allreduce on array of structs](https://stackoverflow.com/questions/29184378/mpi-allreduce-on-an-array-inside-a-dynamic-array-of-structure)
-void sum_forces(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype){
-
-    // Reducing the simulation world is probably the best option
-    // because otherwise the length of the array bodies array will
-    // be MAX ele (which is presumably far less than the bodyCt)
-    struct world *in_world = invec;
-    struct world *inout_world = inoutvec;
-
-    // Sum the forces 
-    for (int b = 0; b < in_world->bodyCt; b++){
-        XF(inout_world, b) += XF(in_world, b);
-        YF(inout_world, b) += YF(in_world, b);
-    }
-
-    return;
 }
 
 /* Preprocessing
@@ -764,8 +737,9 @@ int main(int argc, char **argv)
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
 
-    // Build MPI type for the N-body
+    // Build MPI types
     build_mpi_body_type();
+    build_mpi_world_type();
 
     unsigned int lastup = 0;
     unsigned int secsup;
@@ -846,8 +820,11 @@ int main(int argc, char **argv)
     }
 
     // Initialize nbody world and then bcast it 
-    // TODO: bcast this
-    initialize_simulation_data(world);
+    if (rank == 0) {
+        initialize_simulation_data(world);
+    }
+
+    MPI_Bcast(world, 1, WORLD_TYPE, 0, comm);
 
     // Determine bounds for computation
     recvcounts = malloc(size * sizeof(int));
@@ -865,6 +842,7 @@ int main(int argc, char **argv)
     /****************
     * Main processing
     *****************/
+    MPI_Barrier(comm); // all procs reach here 
 
     // start timer
     if (rank == 0) {
@@ -925,6 +903,7 @@ int main(int argc, char **argv)
 
     // Cleanup
     MPI_Type_free(&BODY_TYPE);
+    MPI_Type_free(&WORLD_TYPE);
 
     free(world);
     world = NULL;
