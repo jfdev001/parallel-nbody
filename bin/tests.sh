@@ -11,6 +11,15 @@
 NP=$1
 CPU_PER_PROC=$2
 N_BODIES=$3
+OPENMP=$4
+
+# Determine if openmp will be used
+if [ $OPENMP = 0 ]
+then 
+    OPENMP=""
+else 
+    OPENMP="--openmp"
+fi
 
 # Name files based on args
 REFERENCE_OUTPUT_FILE=tests/${N_BODIES}_MY_REF_OUTPUT
@@ -18,7 +27,7 @@ OUTPUT_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.out
 ERROR_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.err
 DIFF_FILE=tests/${NP}_${CPU_PER_PROC}_${N_BODIES}_mynbody.test.diff
 
-echo "Running Tests: NP=$NP CPU_PER_PROC=$CPU_PER_PROC N_BODIES=$N_BODIES"
+echo "Running Tests: NP=$NP CPU_PER_PROC=$CPU_PER_PROC N_BODIES=$N_BODIES OPENMP=$OPENMP"
 
 # Always compute sequential outputs
 if ! test -f $REFERENCE_OUTPUT_FILE
@@ -27,7 +36,7 @@ then
 fi
 
 # Get outputs of parallel program
-prun -v -$CPU_PER_PROC -np $NP -sge-script $PRUN_ETC/prun-openmpi nbody/nbody-par $N_BODIES 0 nbody.ppm 1000 2> $ERROR_FILE | tee $OUTPUT_FILE
+prun -v -$CPU_PER_PROC -np $NP -sge-script $PRUN_ETC/prun-openmpi nbody/nbody-par $N_BODIES 0 nbody.ppm 1000 $OPENMP 2> $ERROR_FILE | tee $OUTPUT_FILE
 
 # Get difference in outputs
 diff $REFERENCE_OUTPUT_FILE $OUTPUT_FILE

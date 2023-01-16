@@ -1,7 +1,7 @@
-Reservation number 3910598: Reserved 1 hosts for 900 seconds 
-Run on 1 hosts for 960 seconds from Mon Jan 16 15:05:09 2023
-: node054/0 
+Reservation number 3910762: Reserved 1 hosts for 900 seconds 
+Run on 1 hosts for 960 seconds from Mon Jan 16 16:09:23 2023
+: node057/0 
 Running N-body with 128 bodies and 1000 steps
 
-N-body took: 1.881 seconds
+N-body took: 1.827 seconds
 Performance N-body: 0.09 GFLOPS

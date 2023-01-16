@@ -11,6 +11,7 @@ Usage:
 # Requires `module load openmpi/gcc`
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps --openmp
 ```
 */
 
@@ -285,88 +286,134 @@ void get_bounds(
 
 /// @brief Clear force accumulation variables for all bodies
 static void
-clear_forces(struct world *world)
+clear_forces(struct world *world, bool openmp)
 {
-    for (int b = 0; b < world->bodyCt; ++b) {
-        YF(world, b) = XF(world, b) = 0;
+    if (openmp) {
+        #pragma omp parallel for
+        for (int b = 0; b < world->bodyCt; ++b) {
+            YF(world, b) = XF(world, b) = 0;
+        }
+    } else {
+        for (int b = 0; b < world->bodyCt; ++b) {
+            YF(world, b) = XF(world, b) = 0;
+        }
     }
 }
 
 /// @brief  Compute forces on bodies within the given bounds
 static void
-compute_forces(struct world *world, int lower_bound, int upper_bound)
+compute_forces(struct world *world, int lower_bound, int upper_bound, bool openmp)
 {
     // wait for the positions to available from the other processes
     // when c+1 == upperbound
-    for (int b = lower_bound; b < upper_bound; ++b) {
-        for (int c = 0; c < world->bodyCt; ++c) {
-            if (b == c) continue; 
-            double dx = X(world, c) - X(world, b);
-            double dy = Y(world, c) - Y(world, b);
-            double angle = atan2(dy, dx);
-            double dsqr = dx*dx + dy*dy;
-            double mindist = R(world, b) + R(world, c);
-            double mindsqr = mindist*mindist;
-            double forced = ((dsqr < mindsqr) ? mindsqr : dsqr);
-            double force = M(world, b) * M(world, c) * GRAVITY / forced;
-            double xf = force * cos(angle);
-            double yf = force * sin(angle);
-
-            // Update force for this body only... no need to update the force
-            // on body c because that will be updated on other procs
-            XF(world, b) += xf;
-            YF(world, b) += yf;
+    if (openmp){
+        #pragma omp parallel for
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = 0; c < world->bodyCt; ++c) {
+                if (b == c) continue; 
+                update_forces(world, b, c);
+            }
+        }
+    } else {
+         for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = 0; c < world->bodyCt; ++c) {
+                if (b == c) continue; 
+                update_forces(world, b, c);
+            }
         }
     }
+}
+
+/// @brief Modify forces on bodies in place
+void update_forces(struct world *world, int b, int c) {
+    double dx = X(world, c) - X(world, b);
+    double dy = Y(world, c) - Y(world, b);
+    double angle = atan2(dy, dx);
+    double dsqr = dx*dx + dy*dy;
+    double mindist = R(world, b) + R(world, c);
+    double mindsqr = mindist*mindist;
+    double forced = ((dsqr < mindsqr) ? mindsqr : dsqr);
+    double force = M(world, b) * M(world, c) * GRAVITY / forced;
+    double xf = force * cos(angle);
+    double yf = force * sin(angle);
+
+    // Update force for this body only... no need to update the force
+    // on body c because that will be updated on other procs
+    XF(world, b) += xf;
+    YF(world, b) += yf;
 }
 
 /// @brief Compute velocities of bodies within given bounds
 static void
-compute_velocities(struct world *world, int lower_bound, int upper_bound)
+compute_velocities(struct world *world, int lower_bound, int upper_bound, bool openmp)
 {
-    for (int b = lower_bound; b < upper_bound; ++b) {
-        double xv = XV(world, b);
-        double yv = YV(world, b);
-        double force = sqrt(xv*xv + yv*yv) * FRICTION;
-        double angle = atan2(yv, xv);
-        double xf = XF(world, b) - (force * cos(angle));
-        double yf = YF(world, b) - (force * sin(angle));
-
-        XV(world, b) += (xf / M(world, b)) * DELTA_T;
-        YV(world, b) += (yf / M(world, b)) * DELTA_T;
+    if (openmp) {
+        #pragma omp parallel for
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            update_velocities(world, b);
+        }
+    } else {
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            update_velocities(world, b);
+        }
     }
+}
+
+/// @brief Update velocities in place.
+void update_velocities(struct world *world, int b) {
+    double xv = XV(world, b);
+    double yv = YV(world, b);
+    double force = sqrt(xv*xv + yv*yv) * FRICTION;
+    double angle = atan2(yv, xv);
+    double xf = XF(world, b) - (force * cos(angle));
+    double yf = YF(world, b) - (force * sin(angle));
+
+    XV(world, b) += (xf / M(world, b)) * DELTA_T;
+    YV(world, b) += (yf / M(world, b)) * DELTA_T;
 }
 
 /// @brief Compute positions of bodies within given bounds
 static void
-compute_positions(struct world *world, int lower_bound, int upper_bound)
+compute_positions(struct world *world, int lower_bound, int upper_bound, bool openmp)
 {
-    for (int b = lower_bound; b < upper_bound; ++b) {
-        double xn = X(world, b) + XV(world, b) * DELTA_T;
-        double yn = Y(world, b) + YV(world, b) * DELTA_T;
-
-        /* Bounce off image "walls" */
-        if (xn < 0) {
-            xn = 0;
-            XV(world, b) = -XV(world, b);
-
-        } else if (xn >= world->xdim) {
-            xn = world->xdim - 1;
-            XV(world, b) = -XV(world, b);
+    if (openmp) {
+        #pragma omp parallel for
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            update_positions(world, b);
         }
-        if (yn < 0) {
-            yn = 0;
-            YV(world, b) = -YV(world, b);
-            
-        } else if (yn >= world->ydim) {
-            yn = world->ydim - 1;
-            YV(world, b) = -YV(world, b);
+    } else {
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            update_positions(world, b);
         }
-
-        /* Update position */
-        XN(world, b) = xn;
-        YN(world, b) = yn;
     }
+}
+
+/// @brief Update positions in place
+void update_positions(struct world *world, int b) {
+    double xn = X(world, b) + XV(world, b) * DELTA_T;
+    double yn = Y(world, b) + YV(world, b) * DELTA_T;
+
+    /* Bounce off image "walls" */
+    if (xn < 0) {
+        xn = 0;
+        XV(world, b) = -XV(world, b);
+
+    } else if (xn >= world->xdim) {
+        xn = world->xdim - 1;
+        XV(world, b) = -XV(world, b);
+    }
+    if (yn < 0) {
+        yn = 0;
+        YV(world, b) = -YV(world, b);
+        
+    } else if (yn >= world->ydim) {
+        yn = world->ydim - 1;
+        YV(world, b) = -YV(world, b);
+    }
+
+    /* Update position */
+    XN(world, b) = xn;
+    YN(world, b) = yn;
 }
 
 /* Post-processing
@@ -730,7 +777,7 @@ int main(int argc, char **argv)
     struct filemap image_map;          // for graphics
 
     bool running_experiments = false;  // for logging results of experiments
-    bool openmp = false;               // is this even possible??? to have conditional preprocessor directives???
+    bool openmp = false;               // for using openmp or not
     int prun_compute_args[2];          // for -np <> and -<> args from PRUN_ENVIRONMENT
 
     int *displacements = NULL;
@@ -826,10 +873,10 @@ int main(int argc, char **argv)
 
     // Nbody algo
     for (int step = 0; step < steps; step++) {
-        clear_forces(world);
-        compute_forces(world, lower_bound, upper_bound);
-        compute_velocities(world, lower_bound, upper_bound);
-        compute_positions(world, lower_bound, upper_bound);
+        clear_forces(world, openmp);
+        compute_forces(world, lower_bound, upper_bound, openmp);
+        compute_velocities(world, lower_bound, upper_bound, openmp);
+        compute_positions(world, lower_bound, upper_bound, openmp);
 
         // Gathers different bodies in partitions...
         // needed to get position information
