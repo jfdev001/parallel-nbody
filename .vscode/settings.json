@@ -3,6 +3,12 @@
     "stdio.h": "c",
     "random": "c",
     "stdlib.h": "c",
-    "errno.h": "c"
+    "errno.h": "c",
+    "array": "c",
+    "bitset": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c",
+    "mpi.h": "c"
   }
 }
