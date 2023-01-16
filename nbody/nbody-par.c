@@ -901,6 +901,9 @@ int main(int argc, char **argv)
             get_prun_compute_args(prun_env_fname, prun_compute_args);
 
             // SIZE, NODES, CPUS_PER_NODE, NBODIES, RTIME, GLOPS
+            // IMPORTANT: NODES AND CPUS_PER_NODE will be wrong if multiple experiment
+            // scripts are running
+            // OMP w/ 10k steps might sig kill runtime
             printf(
                 "%d,%d,%d,%d,%.3f,%.2f\n", 
                 size, prun_compute_args[0], prun_compute_args[1], world->bodyCt, rtime, gflops);
