@@ -8,8 +8,14 @@ Description: Parallel n-body simulation
 
 Usage:
 ```
-# Requires `module load openmpi/gcc`
+## For nbody-sanity-check
+# Base program:
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 
+
+# Optimized program: 
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --openmp
+
+## For data collection only
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps --openmp
 ```
