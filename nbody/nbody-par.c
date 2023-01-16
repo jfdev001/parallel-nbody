@@ -26,7 +26,9 @@ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 1
 #include <errno.h>
 #include <stdbool.h>
 #include <dirent.h>
+
 #include <mpi.h>
+#include <omp.h>
 
 /* Constants
 */
@@ -322,7 +324,6 @@ compute_forces(struct world *world, int lower_bound, int upper_bound)
 static void
 compute_velocities(struct world *world, int lower_bound, int upper_bound)
 {
-
     for (int b = lower_bound; b < upper_bound; ++b) {
         double xv = XV(world, b);
         double yv = YV(world, b);
@@ -729,6 +730,7 @@ int main(int argc, char **argv)
     struct filemap image_map;          // for graphics
 
     bool running_experiments = false;  // for logging results of experiments
+    bool openmp = false;               // is this even possible??? to have conditional preprocessor directives???
     int prun_compute_args[2];          // for -np <> and -<> args from PRUN_ENVIRONMENT
 
     int *displacements = NULL;
@@ -755,14 +757,20 @@ int main(int argc, char **argv)
                 stderr, 
                 "Usage: %s num_bodies secs_per_update ppm_output_file steps %s\n",
                 argv[0],
-                "[--run-xps]");
+                "[--run-xps, --openmp]");
         }
         exit(1); 
     }
 
     // Set experiment flag
-    if (argc == 6 && (strcmp(argv[5], "--run-xps") == 0)) {
-        running_experiments = true;
+    if (argc > 5) {
+        for (int i = 5; i < argc; i++){
+            if (strcmp(argv[i], "--run-xps") == 0) {
+                running_experiments = true;
+            } else if (strcmp(argv[i], "--openmp") == 0) {
+                openmp = true;
+            }
+        }
     }
 
     // Set bodies
