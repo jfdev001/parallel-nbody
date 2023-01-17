@@ -13,13 +13,12 @@ CPU_PER_PROC=$2
 N_BODIES=$3
 OPENMP=$4
 
-# Determine if openmp will be used
-if [ $OPENMP = 0 ]
+# validate args
+if [ "$NP" == "" ] || [ "$CPU_PER_PROC" == "" ] || [ "$N_BODIES" == "" ]
 then 
-    OPENMP=""
-else 
-    OPENMP="--openmp"
-fi
+    echo "Usage: bin/tests/ <nprocs> <cpus per proc> <nbodies> [--openmp]"
+    exit 1
+fi 
 
 # Name files based on args
 REFERENCE_OUTPUT_FILE=tests/${N_BODIES}_MY_REF_OUTPUT

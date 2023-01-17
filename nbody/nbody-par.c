@@ -295,30 +295,43 @@ clear_forces(struct world *world, bool openmp)
 /// }
 /// ```
 static void
-compute_forces(struct world *world, int lower_bound, int upper_bound, bool openmp)
+compute_forces(
+    struct world *world, int lower_bound, int upper_bound, 
+    bool openmp)
 {
     // wait for the positions to available from the other processes
     // when c+1 == upperbound
     if (openmp){
+        // TODO: Convert to the negative force optimization version
         #pragma omp parallel for
         for (int b = lower_bound; b < upper_bound; ++b) {
             for (int c = 0; c < world->bodyCt; ++c) {
                 if (b == c) continue; 
-                update_forces(world, b, c);
+                update_forces(world, b, c, false);
             }
         }
     } else {
-         for (int b = lower_bound; b < upper_bound; ++b) {
-            for (int c = 0; c < world->bodyCt; ++c) {
-                if (b == c) continue; 
-                update_forces(world, b, c);
+        // Inner-world (bodies on process) update
+        // this uses the negative force optimization
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = b+1; c < upper_bound; ++c) {
+                update_forces(world, b, c, true);
+            }
+        }        
+        
+        // Intra-world (using positions of bodies on other processes)
+        // this cannot use the negative force optimization
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = 0; c < world->bodyCt; ++c){
+                if (lower_bound <= c && c <= upper_bound) { continue; }
+                update_forces(world, b, c, false);
             }
         }
     }
 }
 
 /// @brief Modify forces on bodies in place
-void update_forces(struct world *world, int b, int c) {
+void update_forces(struct world *world, int b, int c, bool intra_world) {
     double dx = X(world, c) - X(world, b);
     double dy = Y(world, c) - Y(world, b);
     double angle = atan2(dy, dx);
@@ -334,6 +347,11 @@ void update_forces(struct world *world, int b, int c) {
     // on body c because that will be updated on other procs
     XF(world, b) += xf;
     YF(world, b) += yf;
+
+    if (intra_world) {
+        XF(world, c) -= xf;
+        YF(world, c) -= yf;
+    }
 }
 
 /// @brief Compute velocities of bodies within given bounds
@@ -869,6 +887,7 @@ int main(int argc, char **argv)
         start = MPI_Wtime();
     }
 
+
     // Nbody algo
     for (int step = 0; step < steps; step++) {
         clear_forces(world, openmp);
@@ -878,6 +897,9 @@ int main(int argc, char **argv)
 
         // Gathers different bodies in partitions...
         // needed to get position information
+        // NOTE: When attempting to do this with non-blocking communication
+        // i get a segmentation fault... i think this is because the rest 
+        // of the loop modifies the world->bodies member, which is not allowed?
         MPI_Allgatherv(
             MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
             world->bodies,
