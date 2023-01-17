@@ -9,7 +9,7 @@ N_ITERS=100
 # Argument check
 if [ "$OPENMP" == "" ] || [ "$OUTPUT" == "" ]
 then 
-    echo "usage: ./bin/experiments.sh [0, 1] <name of out file>"
+    echo "usage: ./bin/experiments.sh openmp={0, 1} <name of out file>"
     exit 1
 fi 
 
