@@ -343,11 +343,11 @@ void update_forces(struct world *world, int b, int c, bool intra_world) {
     double xf = force * cos(angle);
     double yf = force * sin(angle);
 
-    // Update force for this body only... no need to update the force
-    // on body c because that will be updated on other procs
+    // Update force for this worlds body
     XF(world, b) += xf;
     YF(world, b) += yf;
 
+    // if c is in within the current world, then update it's forces
     if (intra_world) {
         XF(world, c) -= xf;
         YF(world, c) -= yf;
