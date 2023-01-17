@@ -302,11 +302,20 @@ compute_forces(
     // wait for the positions to available from the other processes
     // when c+1 == upperbound
     if (openmp){
-        // TODO: Convert to the negative force optimization version
+        // Uses negative force optimziation
         #pragma omp parallel for
         for (int b = lower_bound; b < upper_bound; ++b) {
-            for (int c = 0; c < world->bodyCt; ++c) {
-                if (b == c) continue; 
+            for (int c = b+1; c < upper_bound; ++c) {
+                update_forces(world, b, c, true);
+            }
+        }       
+        
+        // Intra-world (using positions of bodies on other processes)
+        // this cannot use the negative force optimization
+        #pragma omp parallel for
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = 0; c < world->bodyCt; ++c){
+                if (lower_bound <= c && c <= upper_bound) { continue; }
                 update_forces(world, b, c, false);
             }
         }

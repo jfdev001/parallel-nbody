@@ -1,7 +1,7 @@
 #/usr/bin/bash
 # @brief Wrapper for running more thorough tests
 
-OPENMP=$1  # 0 or 1
+OPENMP=$1  # empty or openmp
 
 # Vary parameters for test script
 for NP in {1..8}; 
