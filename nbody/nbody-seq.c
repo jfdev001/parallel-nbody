@@ -391,6 +391,7 @@ main(int argc, char **argv)
     int b;
     int steps;
     double rtime;
+    double gflops;
     struct timeval start;
     struct timeval end;
     struct filemap image_map;
@@ -478,15 +479,17 @@ main(int argc, char **argv)
     rtime = (end.tv_sec + (end.tv_usec / 1000000.0)) - 
                 (start.tv_sec + (start.tv_usec / 1000000.0));
 
+    gflops = nr_flops(world->bodyCt, steps) / 1e9 / rtime;
+
     if (!running_experiments) {
         print(world);
     } else {
-        // NBODIES,RTIME
-        printf("%d,%.3f\n", world->bodyCt, rtime);
+        // NBODIES,RTIME,GFLOPS
+        printf("%d,%.3f, %.2f\n", world->bodyCt, rtime, gflops);
     }
 
     fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
-    fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", nr_flops(world->bodyCt, steps) / 1e9 / rtime);
+    fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", gflops);
 
     filemap_close(&image_map);
 
