@@ -1,9 +1,12 @@
 /*  
-    N-Body simulation code.
-    
-    Example Cmd:
-    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 32 0 nbody.ppm 100000
-    prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 4 0 nbody.ppm 2
+N-Body simulation code.
+
+Usage  
+```
+prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 32 0 nbody.ppm 100000
+prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 4 0 nbody.ppm 2
+prun -v -1 -np 1 -script $PRUN_ETC/prun-openmpi nbody/nbody-seq 32 0 nbody.ppm 100 --run-xps
+```
 */
 
 #include <stdio.h>
@@ -391,6 +394,7 @@ main(int argc, char **argv)
     struct timeval start;
     struct timeval end;
     struct filemap image_map;
+    int running_experiments = 0;
 
     struct world *world = calloc(1, sizeof *world);
     if (world == NULL) {
@@ -399,10 +403,18 @@ main(int argc, char **argv)
     }
 
     /* Get Parameters */
-    if (argc != 5) {
-        fprintf(stderr, "Usage: %s num_bodies secs_per_update ppm_output_file steps\n",
+    if (argc < 5) {
+        fprintf(stderr, "Usage: %s num_bodies secs_per_update ppm_output_file steps [--run-xps]\n",
                 argv[0]);
         exit(1);
+    }
+
+    if (argc > 5) {
+        for (int i = 0; i < argc; i++) {
+            if (strcmp(argv[i], "--run-xps") == 0){
+                running_experiments = 1;
+            }
+        }
     }
 
     if ((world->bodyCt = atol(argv[1])) > MAXBODIES ) {
@@ -466,8 +478,12 @@ main(int argc, char **argv)
     rtime = (end.tv_sec + (end.tv_usec / 1000000.0)) - 
                 (start.tv_sec + (start.tv_usec / 1000000.0));
 
-
-    print(world);
+    if (!running_experiments) {
+        print(world);
+    } else {
+        // NBODIES,RTIME
+        printf("%d,%.3f\n", world->bodyCt, rtime);
+    }
 
     fprintf(stderr, "\nN-body took: %.3f seconds\n", rtime);
     fprintf(stderr, "Performance N-body: %.2f GFLOPS\n", nr_flops(world->bodyCt, steps) / 1e9 / rtime);
