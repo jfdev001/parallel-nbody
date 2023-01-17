@@ -283,7 +283,7 @@ clear_forces(struct world *world, bool openmp)
 /// @details NOTE: Could implement latency hiding here by 
 /// computing the forces such that 
 /// ```
-/// for b in range(lb, ub): 
+/// for b in range(lb, ub): # This force update can be optimized with XF(b) += XF(c) -=
 ///     for c in range(b+1, ub):
 ///         update_forces(world, b, c)
 /// MPI_Wait(body_gather_request)
