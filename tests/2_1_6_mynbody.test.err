@@ -1,9 +1,0 @@
-Reservation number 3913325: Reserved 2 hosts for 900 seconds 
-Run on 2 hosts for 960 seconds from Tue Jan 17 17:49:11 2023
-: node063/0 node064/0 
-Running N-body with 6 bodies and 1000 steps
-
-N-body took: 0.005 seconds
-Performance N-body: 0.09 GFLOPS
-[node063:13664] 1 more process has sent help message help-mpi-errors.txt / mpi_errors_are_fatal
-[node063:13664] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages

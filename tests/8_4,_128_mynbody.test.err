@@ -1,7 +1,0 @@
-Reservation number 3910849: Reserved 8 hosts for 900 seconds 
-Run on 8 hosts for 960 seconds from Mon Jan 16 17:05:38 2023
-: node057/0 node057/1 node057/2 node057/3 node058/0 node058/1 node058/2 node058/3 node059/0 node059/1 node059/2 node059/3 node060/0 node060/1 node060/2 node060/3 node061/0 node061/1 node061/2 node061/3 node062/0 node062/1 node062/2 node062/3 node063/0 node063/1 node063/2 node063/3 node064/0 node064/1 node064/2 node064/3 
-Running N-body with 128 bodies and 1000 steps
-
-N-body took: 0.330 seconds
-Performance N-body: 0.50 GFLOPS

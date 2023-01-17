@@ -1,7 +1,0 @@
-Reservation number 3910843: Reserved 6 hosts for 900 seconds 
-Run on 6 hosts for 960 seconds from Mon Jan 16 17:05:08 2023
-: node055/0 node055/1 node055/2 node055/3 node056/0 node056/1 node056/2 node056/3 node057/0 node057/1 node057/2 node057/3 node058/0 node058/1 node058/2 node058/3 node059/0 node059/1 node059/2 node059/3 node060/0 node060/1 node060/2 node060/3 
-Running N-body with 128 bodies and 1000 steps
-
-N-body took: 0.178 seconds
-Performance N-body: 0.93 GFLOPS
