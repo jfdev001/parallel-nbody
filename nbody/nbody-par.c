@@ -280,27 +280,12 @@ clear_forces(struct world *world, bool openmp)
 }
 
 /// @brief  Compute forces on bodies within the given bounds
-/// @details NOTE: Could implement latency hiding here by 
-/// computing the forces such that 
-/// ```
-/// for b in range(lb, ub): # This force update can be optimized with XF(b) += XF(c) -=
-///     for c in range(b+1, ub):
-///         update_forces(world, b, c)
-/// MPI_Wait(body_gather_request)
-/// for (b = lb; b < ub; b++){
-///     for (c = 0; c < bodyCt; c++){
-///         if c in [lb..ub) continue
-///         update_forces(world, b, c)
-///     }
-/// }
-/// ```
 static void
 compute_forces(
     struct world *world, int lower_bound, int upper_bound, 
     bool openmp)
 {
-    // wait for the positions to available from the other processes
-    // when c+1 == upperbound
+    // Determine if openmp optimization is used
     if (openmp){
         // Uses negative force optimziation
         #pragma omp parallel for
