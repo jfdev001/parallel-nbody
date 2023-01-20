@@ -265,15 +265,15 @@ void get_bounds(
 
 /// @brief Clear force accumulation variables for all bodies
 static void
-clear_forces(struct world *world, bool openmp)
+clear_forces(struct world *world, int lower_bound, int upper_bound, bool openmp)
 {
     if (openmp) {
         #pragma omp parallel for
-        for (int b = 0; b < world->bodyCt; ++b) {
+        for (int b = lower_bound; b < upper_bound; ++b) {
             YF(world, b) = XF(world, b) = 0;
         }
     } else {
-        for (int b = 0; b < world->bodyCt; ++b) {
+        for (int b = lower_bound; b < upper_bound; ++b) {
             YF(world, b) = XF(world, b) = 0;
         }
     }
@@ -892,7 +892,7 @@ int main(int argc, char **argv)
 
     // Nbody algo
     for (int step = 0; step < steps; step++) {
-        clear_forces(world, openmp);
+        clear_forces(world, lower_bound, upper_bound, openmp);
         compute_forces(world, lower_bound, upper_bound, openmp);
         compute_velocities(world, lower_bound, upper_bound, openmp);
         compute_positions(world, lower_bound, upper_bound, openmp);
