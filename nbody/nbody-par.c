@@ -288,7 +288,7 @@ compute_forces(
     // Determine if openmp optimization is used
     if (openmp){
         // Uses negative force optimziation
-        #pragma omp parallel for
+        // cannot use parallel for here... why?
         for (int b = lower_bound; b < upper_bound; ++b) {
             for (int c = b+1; c < upper_bound; ++c) {
                 update_forces(world, b, c, true);
@@ -300,35 +300,35 @@ compute_forces(
         #pragma omp parallel for
         for (int b = lower_bound; b < upper_bound; ++b) {
             for (int c = 0; c < world->bodyCt; ++c){
-                if (lower_bound <= c && c <= upper_bound) { continue; }
+                if (lower_bound <= c && c < upper_bound) { continue; }
                 update_forces(world, b, c, false);
             }
         }
     } else {
-        // // Inner-world (bodies on process) update
-        // // this uses the negative force optimization
-        // for (int b = lower_bound; b < upper_bound; ++b) {
-        //     for (int c = b+1; c < upper_bound; ++c) {
-        //         update_forces(world, b, c, true);
-        //     }
-        // }        
+        // Inner-world (bodies on process) update
+        // this uses the negative force optimization
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = b+1; c < upper_bound; ++c) {
+                update_forces(world, b, c, true);
+            }
+        }        
         
-        // // Intra-world (using positions of bodies on other processes)
-        // // this cannot use the negative force optimization
-        // for (int b = lower_bound; b < upper_bound; ++b) {
-        //     for (int c = 0; c < world->bodyCt; ++c){
-        //         if (lower_bound <= c && c <= upper_bound) { continue; }
-        //         update_forces(world, b, c, false);
-        //     }
-        // }
-
-        // So the negative force calculation is wrong somewhere then... but where?
-        for (int b = lower_bound; b < upper_bound; b++) {
-            for (int c = 0; c < world->bodyCt; c++) {
-                if (b == c) {continue;}
+        // Intra-world (using positions of bodies on other processes)
+        // this cannot use the negative force optimization
+        for (int b = lower_bound; b < upper_bound; ++b) {
+            for (int c = 0; c < world->bodyCt; ++c){
+                if (lower_bound <= c && c < upper_bound) { continue; }
                 update_forces(world, b, c, false);
             }
         }
+
+        // // So the negative force calculation is wrong somewhere then... but where?
+        // for (int b = lower_bound; b < upper_bound; b++) {
+        //     for (int c = 0; c < world->bodyCt; c++) {
+        //         if (b == c) {continue;}
+        //         update_forces(world, b, c, false);
+        //     }
+        // }
     }
 }
 
