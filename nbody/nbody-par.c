@@ -17,6 +17,7 @@ prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 1
 
 ## For data collection only
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps
+prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps --measure-comm
 prun -v -1 -np 2 -script $PRUN_ETC/prun-openmpi nbody/nbody-par 32 0 nbody.ppm 100000 --run-xps --openmp
 ```
 */
@@ -794,6 +795,7 @@ int main(int argc, char **argv)
 
     bool running_experiments = false;  // for logging results of experiments
     bool openmp = false;               // for using openmp or not
+    bool measure_comm = false;         // for measuring communication time in for loop
     int prun_compute_args[2];          // for -np <> and -<> args from PRUN_ENVIRONMENT
 
     int *displacements = NULL;
@@ -820,7 +822,7 @@ int main(int argc, char **argv)
                 stderr, 
                 "Usage: %s num_bodies secs_per_update ppm_output_file steps %s\n",
                 argv[0],
-                "[--run-xps, --openmp]");
+                "[--run-xps, --openmp, --measure-comm]");
         }
         exit(1); 
     }
@@ -832,6 +834,8 @@ int main(int argc, char **argv)
                 running_experiments = true;
             } else if (strcmp(argv[i], "--openmp") == 0) {
                 openmp = true;
+            } else if (strcmp(argv[i], "--measure-comm") == 0) {
+                measure_comm = true;
             }
         }
     }
@@ -904,13 +908,13 @@ int main(int argc, char **argv)
         // NOTE: When attempting to do this with non-blocking communication
         // i get a segmentation fault... i think this is because the rest 
         // of the loop modifies the world->bodies member, which is not allowed?
-        if (running_experiments && rank == 0) { comm_start = MPI_Wtime(); }
+        if (measure_comm && running_experiments && rank == 0) { comm_start = MPI_Wtime(); }
         MPI_Allgatherv(
             MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
             world->bodies,
             recvcounts, displacements,
             BODY_TYPE, comm);
-        if (running_experiments && rank == 0) { comm_overhead += MPI_Wtime() - comm_start;}
+        if (measure_comm && running_experiments && rank == 0) { comm_overhead += MPI_Wtime() - comm_start; }
 
         world->old ^= 1;
     }
