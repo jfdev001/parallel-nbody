@@ -787,6 +787,8 @@ int main(int argc, char **argv)
     double start;
     double stop;
     double rtime;                      // run time of simulation
+    double comm_overhead = 0;          // cumulative time spent in MPI func during computation
+    double comm_start;
     double gflops;                     // floating pt ops
     struct filemap image_map;          // for graphics
 
@@ -902,11 +904,13 @@ int main(int argc, char **argv)
         // NOTE: When attempting to do this with non-blocking communication
         // i get a segmentation fault... i think this is because the rest 
         // of the loop modifies the world->bodies member, which is not allowed?
+        if (running_experiments && rank == 0) { comm_start = MPI_Wtime(); }
         MPI_Allgatherv(
             MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
             world->bodies,
             recvcounts, displacements,
             BODY_TYPE, comm);
+        if (running_experiments && rank == 0) { comm_overhead += MPI_Wtime() - comm_start;}
 
         world->old ^= 1;
     }
@@ -938,13 +942,14 @@ int main(int argc, char **argv)
             char *prun_env_fname = get_prun_environment_fname();
             get_prun_compute_args(prun_env_fname, prun_compute_args);
 
-            // SIZE, NODES, CPUS_PER_NODE, NBODIES, RTIME, GLOPS
+            // SIZE, NODES, CPUS_PER_NODE, NBODIES, RTIME, COMMTIME, COMMTIME:RTIME, GLOPS
             // IMPORTANT: NODES AND CPUS_PER_NODE will be wrong if multiple experiment
             // scripts are running
             // OMP w/ 10k steps might sig kill runtime
             printf(
-                "%d,%d,%d,%d,%.3f,%.2f\n", 
-                size, prun_compute_args[0], prun_compute_args[1], world->bodyCt, rtime, gflops);
+                "%d,%d,%d,%d,%.3f,%.3f,%.3f,%.2f\n", 
+                size, prun_compute_args[0], prun_compute_args[1], 
+                world->bodyCt, rtime, comm_overhead, comm_overhead/rtime, gflops);
         }
     }
 
