@@ -1,1 +1,7 @@
-Could not shut down the DRMAA library: No active DRMAA session.
+Reservation number 3916606: Reserved 2 hosts for 900 seconds 
+Run on 2 hosts for 960 seconds from Sat Jan 21 10:36:32 2023
+: node054/0 node054/1 node054/2 node054/3 node054/4 node054/5 node054/6 node054/7 node054/8 node054/9 node054/10 node054/11 node054/12 node054/13 node054/14 node054/15 node055/0 node055/1 node055/2 node055/3 node055/4 node055/5 node055/6 node055/7 node055/8 node055/9 node055/10 node055/11 node055/12 node055/13 node055/14 node055/15 
+Running N-body with 128 bodies and 1000 steps
+
+N-body took: 134.712 seconds
+Performance N-body: 0.00 GFLOPS
