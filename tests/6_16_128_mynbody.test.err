@@ -1,7 +1,7 @@
-Reservation number 3916618: Reserved 6 hosts for 900 seconds 
-Run on 6 hosts for 960 seconds from Sat Jan 21 10:48:15 2023
-: node056/0 node056/1 node056/2 node056/3 node056/4 node056/5 node056/6 node056/7 node056/8 node056/9 node056/10 node056/11 node056/12 node056/13 node056/14 node056/15 node057/0 node057/1 node057/2 node057/3 node057/4 node057/5 node057/6 node057/7 node057/8 node057/9 node057/10 node057/11 node057/12 node057/13 node057/14 node057/15 node058/0 node058/1 node058/2 node058/3 node058/4 node058/5 node058/6 node058/7 node058/8 node058/9 node058/10 node058/11 node058/12 node058/13 node058/14 node058/15 node059/0 node059/1 node059/2 node059/3 node059/4 node059/5 node059/6 node059/7 node059/8 node059/9 node059/10 node059/11 node059/12 node059/13 node059/14 node059/15 node060/0 node060/1 node060/2 node060/3 node060/4 node060/5 node060/6 node060/7 node060/8 node060/9 node060/10 node060/11 node060/12 node060/13 node060/14 node060/15 node061/0 node061/1 node061/2 node061/3 node061/4 node061/5 node061/6 node061/7 node061/8 node061/9 node061/10 node061/11 node061/12 node061/13 node061/14 node061/15 
+Reservation number 3917068: Reserved 6 hosts for 900 seconds 
+Run on 6 hosts for 960 seconds from Sun Jan 22 13:32:37 2023
+: node030/0 node030/1 node030/2 node030/3 node030/4 node030/5 node030/6 node030/7 node030/8 node030/9 node030/10 node030/11 node030/12 node030/13 node030/14 node030/15 node031/0 node031/1 node031/2 node031/3 node031/4 node031/5 node031/6 node031/7 node031/8 node031/9 node031/10 node031/11 node031/12 node031/13 node031/14 node031/15 node032/0 node032/1 node032/2 node032/3 node032/4 node032/5 node032/6 node032/7 node032/8 node032/9 node032/10 node032/11 node032/12 node032/13 node032/14 node032/15 node033/0 node033/1 node033/2 node033/3 node033/4 node033/5 node033/6 node033/7 node033/8 node033/9 node033/10 node033/11 node033/12 node033/13 node033/14 node033/15 node034/0 node034/1 node034/2 node034/3 node034/4 node034/5 node034/6 node034/7 node034/8 node034/9 node034/10 node034/11 node034/12 node034/13 node034/14 node034/15 node035/0 node035/1 node035/2 node035/3 node035/4 node035/5 node035/6 node035/7 node035/8 node035/9 node035/10 node035/11 node035/12 node035/13 node035/14 node035/15 
 Running N-body with 128 bodies and 1000 steps
 
-N-body took: 136.097 seconds
-Performance N-body: 0.00 GFLOPS
+N-body took: 0.366 seconds
+Performance N-body: 0.45 GFLOPS
