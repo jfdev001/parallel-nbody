@@ -1,13 +1,17 @@
-MPI assignment for the Parallel Programming Practical (PPP)
+MPI + OpenMP assignment for the Parallel Programming Practical (PPP). 
+
+Performs an n-celestial body simulation that is accelerated using both
+MPI and optionally OpenMP. See the contents below for a description of
+folders.
 
 Content:
 
-- nbody Contains sequential version of the N-body algorithm
+- nbody/ Contains sequential version of the N-body algorithm
   Create parallel version of the N-body algorithm there
-  and name it nbody-par.
-- docs Place there your report.
-- bin Contains nbody-sanity-check (comparison with expected output)
-  Do not submit programs which do not go through sanity-checks successfully.
+  and name it nbody-par. 
+- docs/ Report on findings for speedups and efficiency.
+- bin/ Contains nbody-sanity-check (comparison with expected output) as well
+  as testing scripts.
 
 References
 
