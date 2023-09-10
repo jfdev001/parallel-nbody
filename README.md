@@ -1,4 +1,5 @@
-MPI + OpenMP assignment for the Parallel Programming Practical (PPP). 
+MPI + OpenMP assignment for the Parallel Programming Practical (PPP) course
+at Vrije Universiteit. 
 
 Performs an n-celestial body simulation that is accelerated using both
 MPI and optionally OpenMP. See the contents below for a description of
